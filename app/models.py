@@ -34,7 +34,7 @@ class Sales(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey("product.product_id"), nullable=False)
     region_area = db.Column(db.String(200))
     quantity = db.Column(db.Integer)
-    amt_sales = db.Column(db.Float)
+    amount_of_sales = db.Column(db.Float)
     time_period = db.Column(db.DateTime)
 
 

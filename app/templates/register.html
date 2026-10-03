@@ -1,18 +1,210 @@
-{% extends "mainbase.html" %}
-{% block title %}Register - BIZBOY{% endblock %}
+{% extends "mainbase.html" %} {% block title %} Create Account - BIZBOY {%
+endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/authcss.css') }}"
+/>
+{% endblock %} {% block content %}
 
-{% block content %}
-    <h2>Register</h2>
-    <form method="POST" action="{{ url_for('auth.register') }}">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required><br>
+<div class="auth-page">
+  <div class="auth-container register-container">
+    <!-- LEFT SIDE -->
+    <div class="auth-info">
+      <div class="auth-brand">
+        <img
+          src="{{ url_for('static', filename='images/logo.png') }}"
+          alt="BIZBOY Logo"
+        />
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br>
+        <div>
+          <strong>BIZBOY</strong>
+          <span>Business Intelligence</span>
+        </div>
+      </div>
 
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br>
+      <div class="auth-info-content">
+        <span class="auth-label"> GET STARTED </span>
 
-        <button type="submit">Register</button>
-    </form>
+        <h1>Build a clearer picture of your business.</h1>
+
+        <p>
+          Create your BIZBOY account and bring your business data together in
+          one place.
+        </p>
+
+        <div class="auth-features">
+          <div class="auth-feature">
+            <span>01</span>
+
+            <div>
+              <strong>Connect Your Data</strong>
+              <p>Upload your business files and information.</p>
+            </div>
+          </div>
+
+          <div class="auth-feature">
+            <span>02</span>
+
+            <div>
+              <strong>Analyze Performance</strong>
+              <p>Understand sales, expenses, products and customers.</p>
+            </div>
+          </div>
+
+          <div class="auth-feature">
+            <span>03</span>
+
+            <div>
+              <strong>Make Better Decisions</strong>
+              <p>Use your business information to plan ahead.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <div class="auth-card register-card">
+      <div class="auth-card-header">
+        <span class="small-label"> CREATE YOUR ACCOUNT </span>
+
+        <h2>Start with BIZBOY</h2>
+
+        <p>Tell us a little about yourself and your business.</p>
+      </div>
+
+      <form
+        method="POST"
+        action="{{ url_for('auth.register') }}"
+        class="auth-form"
+      >
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name"> Your Name </label>
+
+            <input
+              type="text"
+              id="name"
+              name="name"
+              placeholder="Enter your name"
+              autocomplete="name"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="business_name"> Business Name </label>
+
+            <input
+              type="text"
+              id="business_name"
+              name="business_name"
+              placeholder="Your business name"
+              autocomplete="organization"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email"> Email Address </label>
+
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Enter your business email"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="business_type"> Business Type </label>
+
+          <select id="business_type" name="business_type">
+            <option value="">Select business type</option>
+
+            <option value="Retail">Retail</option>
+
+            <option value="E-commerce">E-commerce</option>
+
+            <option value="Manufacturing">Manufacturing</option>
+
+            <option value="Food & Restaurant">Food & Restaurant</option>
+
+            <option value="Service">Service</option>
+
+            <option value="Technology">Technology</option>
+
+            <option value="Education">Education</option>
+
+            <option value="Healthcare">Healthcare</option>
+
+            <option value="Finance">Finance</option>
+
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="password"> Password </label>
+
+          <div class="password-wrapper">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Create a password"
+              autocomplete="new-password"
+              required
+            />
+
+            <button
+              type="button"
+              class="password-toggle"
+              onclick="togglePassword('password', this)"
+            >
+              Show
+            </button>
+          </div>
+
+          <small class="input-hint">
+            Choose a password you can remember.
+          </small>
+        </div>
+
+        <button type="submit" class="auth-submit">
+          Create Account
+          <span>→</span>
+        </button>
+      </form>
+
+      <div class="auth-divider">
+        <span>OR</span>
+      </div>
+
+      <div class="auth-switch">
+        <p>Already have a BIZBOY account?</p>
+
+        <a href="{{ url_for('auth.login') }}"> Login to your account </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+
+    if (input.type === "password") {
+      input.type = "text";
+      button.textContent = "Hide";
+    } else {
+      input.type = "password";
+      button.textContent = "Show";
+    }
+  }
+</script>
+
 {% endblock %}

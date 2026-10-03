@@ -1,7 +1,283 @@
-{% extends "userbase.html" %}
-{% block title %}Dashboard - BIZBOY{% endblock %}
-
+{% extends "userbase.html" %} {% block title %}Dashboard - BIZBOY{% endblock %}
 {% block content %}
-    <h2>Welcome to your Dashboard</h2>
-    <p>This is your dashboard where you can manage your business information.</p>
+<div class="biz-dashboard">
+  <section class="dashboard-heading">
+    <div>
+      <span class="dashboard-kicker">BUSINESS INTELLIGENCE</span>
+      <h1>Business Dashboard</h1>
+      <p>
+        Welcome back, {{ user.name }}. Here's your current business overview.
+      </p>
+    </div>
+
+    <div class="dashboard-heading-right">
+      {% if has_data %}
+      <div class="live-status">
+        <span></span>
+        Live Data
+      </div>
+      {% else %}
+      <div class="live-status empty">
+        <span></span>
+        Waiting for Data
+      </div>
+      {% endif %}
+
+      <a href="{{ url_for('home.input_data') }}" class="input-data-btn">
+        <span>+</span>
+        Input Data
+      </a>
+    </div>
+  </section>
+
+  <section class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-title">TOTAL SALES</div>
+      <div class="stat-value">₹{{ "{:,.2f}".format(total_sales) }}</div>
+      <div class="stat-description">
+        {{ total_sales_records }} sales records
+      </div>
+      <div class="stat-icon">↗</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">NET AMOUNT</div>
+      <div class="stat-value">₹{{ "{:,.2f}".format(net_amount) }}</div>
+      <div
+        class="stat-description {% if net_amount >= 0 %}positive{% else %}negative{% endif %}"
+      >
+        {% if net_amount >= 0 %}Positive{% else %}Negative{% endif %}
+      </div>
+      <div class="stat-icon">$</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">TOTAL EXPENSES</div>
+      <div class="stat-value">₹{{ "{:,.2f}".format(total_expenses) }}</div>
+      <div class="stat-description">Business expenses</div>
+      <div class="stat-icon expense">≋</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">PRODUCTS</div>
+      <div class="stat-value">{{ total_products }}</div>
+      <div class="stat-description">Products registered</div>
+      <div class="stat-icon purple">◈</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">CUSTOMER RECORDS</div>
+      <div class="stat-value">{{ total_customers }}</div>
+      <div class="stat-description">Customer transactions</div>
+      <div class="stat-icon">◎</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">UNITS SOLD</div>
+      <div class="stat-value">{{ "{:,}".format(total_quantity) }}</div>
+      <div class="stat-description">Total quantity sold</div>
+      <div class="stat-icon">▦</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">PRODUCTION</div>
+      <div class="stat-value">{{ total_production }}</div>
+      <div class="stat-description">Production records</div>
+      <div class="stat-icon orange">◫</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-title">ANALYSIS</div>
+      <div class="stat-value">{{ total_analysis }}</div>
+      <div class="stat-description">Generated insights</div>
+      <div class="stat-icon">✦</div>
+    </div>
+  </section>
+
+  {% if has_data %}
+  <section class="chart-grid">
+    <div class="chart-card large">
+      <div class="chart-header">
+        <div>
+          <h2>Revenue vs Expenses</h2>
+          <p>Monthly financial performance</p>
+        </div>
+      </div>
+      <div id="revenueExpensesChart" class="plotly-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2>Monthly Sales</h2>
+          <p>Sales revenue by month</p>
+        </div>
+      </div>
+      <div id="monthlySalesChart" class="plotly-chart"></div>
+    </div>
+  </section>
+
+  <section class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2>Top Products</h2>
+          <p>Products generating the most sales</p>
+        </div>
+      </div>
+      <div id="productSalesChart" class="plotly-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2>Sales by Region</h2>
+          <p>Regional contribution</p>
+        </div>
+      </div>
+      <div id="regionSalesChart" class="plotly-chart"></div>
+    </div>
+  </section>
+
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <div>
+        <h2>Recent Transactions</h2>
+        <p>Latest sales records from your database</p>
+      </div>
+    </div>
+
+    {% if recent_sales %}
+    <div class="data-table-container">
+      <table class="business-table">
+        <thead>
+          <tr>
+            <th>PRODUCT</th>
+            <th>REGION</th>
+            <th>QUANTITY</th>
+            <th>AMOUNT</th>
+            <th>DATE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sale in recent_sales %}
+          <tr>
+            <td>
+              {% for product in products %} {% if product.product_id ==
+              sale.product_id %} {{ product.product_name }} {% endif %} {%
+              endfor %}
+            </td>
+            <td>{{ sale.region_area or "—" }}</td>
+            <td>{{ sale.quantity or 0 }}</td>
+            <td class="amount">
+              ₹{{ "{:,.2f}".format(sale.amount_of_sales or 0) }}
+            </td>
+            <td>
+              {% if sale.time_period %} {{ sale.time_period.strftime("%d %b %Y")
+              }} {% else %} — {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-table">No sales records available.</div>
+    {% endif %}
+  </section>
+
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <div>
+        <h2>Business Analysis</h2>
+        <p>Automated analysis generated from your data</p>
+      </div>
+    </div>
+
+    {% if analysis %}
+    <div class="analysis-grid">
+      {% for item in analysis[:6] %}
+      <div class="analysis-card">
+        <div class="analysis-card-top">
+          <span>{{ item.analysis_type or "Analysis" }}</span>
+        </div>
+        <h3>{{ item.ana_name }}</h3>
+        <p>{{ item.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-table">No analysis has been generated yet.</div>
+    {% endif %}
+  </section>
+
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <div>
+        <h2>Top Products</h2>
+        <p>Based on total sales amount</p>
+      </div>
+    </div>
+
+    {% if top_products %}
+    <div class="top-products-grid">
+      {% for product_name, amount in top_products %}
+      <div class="top-product-card">
+        <div class="product-rank">{{ loop.index }}</div>
+        <div class="product-information">
+          <strong>{{ product_name }}</strong>
+          <span>Sales contribution</span>
+        </div>
+        <div class="product-amount">₹{{ "{:,.2f}".format(amount) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-table">No product sales data available.</div>
+    {% endif %}
+  </section>
+
+  {% else %}
+  <section class="empty-dashboard">
+    <div class="empty-dashboard-icon">↑</div>
+    <span class="dashboard-kicker">GET STARTED</span>
+    <h2>Your dashboard is waiting for data</h2>
+    <p>
+      Upload your CSV, Excel or JSON business files. BIZBOY will organize the
+      data, store it in your database and generate dashboard analysis.
+    </p>
+    <a href="{{ url_for('home.input_data') }}" class="input-data-btn"
+      >+ Input Business Data</a
+    >
+  </section>
+  {% endif %}
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+  const chartConfig = {
+      responsive: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ["lasso2d", "select2d"]
+  };
+
+  const revenueExpensesData = {{ revenue_expenses_chart | safe }};
+  Plotly.newPlot("revenueExpensesChart", revenueExpensesData.data, revenueExpensesData.layout, chartConfig);
+
+  const monthlySalesData = {{ monthly_sales_chart | safe }};
+  Plotly.newPlot("monthlySalesChart", monthlySalesData.data, monthlySalesData.layout, chartConfig);
+
+  const productSalesData = {{ product_sales_chart | safe }};
+  Plotly.newPlot("productSalesChart", productSalesData.data, productSalesData.layout, chartConfig);
+
+  const regionSalesData = {{ region_sales_chart | safe }};
+  Plotly.newPlot("regionSalesChart", regionSalesData.data, regionSalesData.layout, chartConfig);
+
+  window.addEventListener("resize", function () {
+      Plotly.Plots.resize("revenueExpensesChart");
+      Plotly.Plots.resize("monthlySalesChart");
+      Plotly.Plots.resize("productSalesChart");
+      Plotly.Plots.resize("regionSalesChart");
+  });
+</script>
 {% endblock %}
