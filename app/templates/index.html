@@ -1,7 +1,365 @@
-{% extends "mainbase.html" %}
-{% block title %}Home - BIZBOY{% endblock %}
+{% extends "mainbase.html" %} {% block title %}BIZBOY | Smart Business
+Solutions{% endblock %} {% block content %}
 
-{% block content %}
-    <h2>Welcome to BIZBOY</h2>
-    <p>This is the home page of your Flask application.</p>
+<!-- HERO SECTION -->
+<section class="hero-section">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      Smart tools for growing businesses
+    </div>
+
+    <h1>
+      Understand your business.
+      <span>Make better decisions.</span>
+    </h1>
+
+    <p class="hero-description">
+      BIZBOY brings your sales, products, expenses, customers and business data
+      together in one simple workspace.
+    </p>
+
+    <div class="hero-actions">
+      <a href="{{ url_for('auth.register') }}" class="primary-btn">
+        Get Started
+        <span>→</span>
+      </a>
+
+      <a href="#how-it-works" class="secondary-btn"> See How It Works </a>
+    </div>
+
+    <div class="hero-note">
+      <span>✓</span> Upload your business data <span>✓</span> Analyze
+      performance <span>✓</span> Discover opportunities
+    </div>
+  </div>
+
+  <div class="hero-dashboard">
+    <div class="dashboard-window">
+      <div class="window-top">
+        <div class="window-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <div class="window-title">Business Overview</div>
+      </div>
+
+      <div class="mini-dashboard">
+        <div class="mini-header">
+          <div>
+            <small>Business Overview</small>
+            <h3>Performance</h3>
+          </div>
+
+          <div class="mini-period">This Month</div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span>Total Revenue</span>
+            <strong>₹2.48L</strong>
+            <small class="positive">↑ 18.4%</small>
+          </div>
+
+          <div class="metric-card">
+            <span>Total Sales</span>
+            <strong>1,284</strong>
+            <small class="positive">↑ 12.7%</small>
+          </div>
+
+          <div class="metric-card">
+            <span>Expenses</span>
+            <strong>₹84.6K</strong>
+            <small>8.2% of revenue</small>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-heading">
+            <div>
+              <span>Revenue Overview</span>
+              <strong>₹2,48,600</strong>
+            </div>
+
+            <span class="chart-label">Last 6 months</span>
+          </div>
+
+          <div class="fake-chart">
+            <div class="chart-line">
+              <i style="height: 32%"></i>
+              <i style="height: 45%"></i>
+              <i style="height: 38%"></i>
+              <i style="height: 58%"></i>
+              <i style="height: 71%"></i>
+              <i style="height: 86%"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST / INTRO -->
+<section class="intro-section">
+  <div class="section-label">ONE PLACE FOR YOUR BUSINESS DATA</div>
+
+  <h2>From raw data to useful business insights.</h2>
+
+  <p>
+    Stop switching between spreadsheets and scattered files. BIZBOY helps
+    organize your business information and turns it into something you can
+    actually understand.
+  </p>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="section-heading">
+    <div>
+      <span class="section-label">WHAT YOU CAN DO</span>
+      <h2>Everything important,<br />in one workspace.</h2>
+    </div>
+
+    <p>
+      Start with the data you already have and gradually build a clearer picture
+      of your business.
+    </p>
+  </div>
+
+  <div class="feature-grid">
+    <article class="feature-card feature-large">
+      <div class="feature-number">01</div>
+
+      <div class="feature-icon">↗</div>
+
+      <h3>Sales & Revenue</h3>
+
+      <p>
+        Track sales performance, revenue, quantities and regional performance
+        from one place.
+      </p>
+
+      <div class="feature-tags">
+        <span>Sales</span>
+        <span>Revenue</span>
+        <span>Regions</span>
+      </div>
+    </article>
+
+    <article class="feature-card">
+      <div class="feature-number">02</div>
+
+      <div class="feature-icon">▦</div>
+
+      <h3>Products</h3>
+
+      <p>
+        Understand which products are selling and how individual products are
+        performing.
+      </p>
+    </article>
+
+    <article class="feature-card">
+      <div class="feature-number">03</div>
+
+      <div class="feature-icon">₹</div>
+
+      <h3>Expenses</h3>
+
+      <p>
+        Organize expenses by category and understand where your money is going.
+      </p>
+    </article>
+
+    <article class="feature-card">
+      <div class="feature-number">04</div>
+
+      <div class="feature-icon">◌</div>
+
+      <h3>Customers</h3>
+
+      <p>
+        Explore customer activity, purchasing behaviour and product interest.
+      </p>
+    </article>
+
+    <article class="feature-card feature-large">
+      <div class="feature-number">05</div>
+
+      <div class="feature-icon">⌁</div>
+
+      <h3>Analysis & Predictions</h3>
+
+      <p>
+        Use your historical business data to identify trends, generate
+        predictions and discover useful patterns.
+      </p>
+
+      <div class="feature-tags">
+        <span>Analysis</span>
+        <span>Trends</span>
+        <span>Predictions</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- DATA FLOW -->
+<section class="process-section" id="how-it-works">
+  <div class="process-heading">
+    <span class="section-label">HOW IT WORKS</span>
+
+    <h2>
+      Your data goes in.<br />
+      Useful information comes out.
+    </h2>
+  </div>
+
+  <div class="process-list">
+    <div class="process-item">
+      <div class="process-number">01</div>
+
+      <div>
+        <h3>Upload your data</h3>
+        <p>
+          Upload CSV, Excel, JSON or a ZIP containing multiple business files.
+        </p>
+      </div>
+    </div>
+
+    <div class="process-item">
+      <div class="process-number">02</div>
+
+      <div>
+        <h3>Organize your information</h3>
+        <p>
+          BIZBOY identifies your business data and helps map it into the right
+          categories.
+        </p>
+      </div>
+    </div>
+
+    <div class="process-item">
+      <div class="process-number">03</div>
+
+      <div>
+        <h3>Explore your business</h3>
+        <p>
+          View sales, products, expenses, customers and other information
+          through your dashboard.
+        </p>
+      </div>
+    </div>
+
+    <div class="process-item">
+      <div class="process-number">04</div>
+
+      <div>
+        <h3>Find patterns and opportunities</h3>
+        <p>
+          Analyze historical data, trends and predictions to better understand
+          your business.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI / INSIGHTS SECTION -->
+<section class="insights-section">
+  <div class="insights-content">
+    <span class="section-label">SMARTER BUSINESS ANALYSIS</span>
+
+    <h2>
+      Don't just store your data.
+      <span>Understand it.</span>
+    </h2>
+
+    <p>
+      BIZBOY is built to help you move from numbers and records toward useful
+      business information.
+    </p>
+
+    <div class="insight-list">
+      <div class="insight-item">
+        <span>01</span>
+        <div>
+          <strong>Spot changing trends</strong>
+          <p>See how your business performance changes over time.</p>
+        </div>
+      </div>
+
+      <div class="insight-item">
+        <span>02</span>
+        <div>
+          <strong>Understand customer interest</strong>
+          <p>Identify products and purchasing patterns that matter.</p>
+        </div>
+      </div>
+
+      <div class="insight-item">
+        <span>03</span>
+        <div>
+          <strong>Plan with predictions</strong>
+          <p>Use historical information to estimate future patterns.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight-panel">
+    <div class="panel-header">
+      <span>BUSINESS INSIGHT</span>
+      <span class="panel-status">● Updated</span>
+    </div>
+
+    <div class="insight-main">
+      <small>Revenue trend</small>
+
+      <h3>Growing steadily</h3>
+
+      <div class="trend-value">+18.4%</div>
+    </div>
+
+    <div class="insight-bars">
+      <span style="height: 28%"></span>
+      <span style="height: 42%"></span>
+      <span style="height: 37%"></span>
+      <span style="height: 55%"></span>
+      <span style="height: 68%"></span>
+      <span style="height: 82%"></span>
+      <span style="height: 94%"></span>
+    </div>
+
+    <p class="panel-message">
+      Your recorded revenue has shown an upward trend across the selected
+      period.
+    </p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-inner">
+    <div>
+      <span class="section-label">GET STARTED</span>
+
+      <h2>
+        Build a clearer picture<br />
+        of your business.
+      </h2>
+
+      <p>Bring your business data together with BIZBOY.</p>
+    </div>
+
+    <a href="{{ url_for('auth.register') }}" class="cta-button">
+      Create Your Account
+      <span>→</span>
+    </a>
+  </div>
+</section>
+
 {% endblock %}

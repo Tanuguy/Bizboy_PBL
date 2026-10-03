@@ -1,43 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{% block title %}BIZBOY{% endblock %}</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/maincss.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/x-png">
+
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
+    {% block extra_css %}
+    {% endblock %}
 </head>
+
+
 <body>
-    <header>
-        <h1>BIZBOY</h1>
-        <nav>
-            <ul>
-                <li><a href="{{ url_for('home.homepg') }}">Home</a></li>
-                <li><a href="#">Features</a></li>
-                <li><a href="#">Working</a></li>
-                <li><a href="{{ url_for('auth.register') }}">Register</a></li>
-                <li><a href="{{ url_for('auth.login') }}">Login</a></li>
-            </ul>
-        </nav>
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
+    <header class="main-header">
+
+        <div class="navbar">
+
+            <!-- LOGO / BRAND -->
+
+            <a href="{{ url_for('home.homepg') }}" class="brand">
+
+                <div class="logo-box">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY Logo">
+                </div>
+
+                <div class="brand-text">
+
+                    <span class="brand-name">
+                        BIZBOY
+                    </span>
+
+                    <span class="brand-tagline">
+                        Build. Manage. Grow.
+                    </span>
+
+                </div>
+
+            </a>
+
+
+            <!-- NAVIGATION -->
+
+            <nav class="navigation">
+
+                <a href="{{ url_for('home.homepg') }}" class="nav-link active">
+                    <span>Home</span>
+                </a>
+
+                <a href="{{ url_for('home.homepg') }}#features" class="nav-link">
+                    <span>Features</span>
+                </a>
+
+                <a href="{{ url_for('home.homepg') }}#how-it-works" class="nav-link">
+                    <span>How It Works</span>
+                </a>
+
+            </nav>
+
+
+            <!-- AUTH BUTTONS -->
+
+            <div class="auth-buttons">
+
+                <a href="{{ url_for('auth.login') }}" class="login-btn">
+                    Login
+                </a>
+
+                <a href="{{ url_for('auth.register') }}" class="register-btn">
+
+                    Get Started
+
+                    <span class="arrow">
+                        →
+                    </span>
+
+                </a>
+
+            </div>
+
+
+            <!-- MOBILE MENU -->
+
+            <button class="menu-btn" onclick="toggleMenu()" type="button">
+
+                ☰
+
+            </button>
+
+        </div>
+
     </header>
 
-    <main>
+
+    <!-- =========================
+         MAIN CONTENT
+    ========================== -->
+
+    <main class="main-container">
+
+        <!-- FLASH MESSAGES -->
+
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+
+        {% if messages %}
+
+        <div class="flash-container">
+
+            {% for category, message in messages %}
+
+            <div class="alert alert-{{ category }}">
+
+                <span class="alert-icon">
+
+                    {% if category == "success" %}
+
+                    ✓
+
+                    {% elif category == "danger" %}
+
+                    !
+
+                    {% elif category == "warning" %}
+
+                    ⚠
+
+                    {% else %}
+
+                    i
+
+                    {% endif %}
+
+                </span>
+
+                <span>
+                    {{ message }}
+                </span>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% endif %}
+
         {% endwith %}
 
+
+        <!-- PAGE CONTENT -->
+
         {% block content %}
+
         {% endblock %}
+
     </main>
 
-    <footer>
-        <p>&copy; 2026 BIZBOY. All rights reserved.</p>
+
+    <!-- =========================
+         FOOTER
+    ========================== -->
+
+    <footer class="main-footer">
+
+        <div class="footer-content">
+
+
+            <!-- FOOTER BRAND -->
+
+            <div class="footer-brand">
+
+                <div class="footer-logo">
+
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY Logo">
+
+                </div>
+
+                <div>
+
+                    <h3>
+                        BIZBOY
+                    </h3>
+
+                    <p>
+                        Build. Manage. Grow.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- FOOTER LINKS -->
+
+            <div class="footer-links">
+
+                <a href="{{ url_for('home.homepg') }}">
+                    Home
+                </a>
+
+                <a href="{{ url_for('home.homepg') }}#features">
+                    Features
+                </a>
+
+                <a href="{{ url_for('home.homepg') }}#how-it-works">
+                    How It Works
+                </a>
+
+                <a href="{{ url_for('auth.register') }}">
+                    Register
+                </a>
+
+            </div>
+
+
+            <!-- COPYRIGHT -->
+
+            <div class="footer-copy">
+
+                <p>
+                    © 2026 BIZBOY. All rights reserved.
+                </p>
+
+            </div>
+
+        </div>
+
     </footer>
+
+
+    <!-- =========================
+         MOBILE MENU SCRIPT
+    ========================== -->
+
+    <script>
+
+        function toggleMenu() {
+
+            const navigation =
+                document.querySelector(".navigation");
+
+            const authButtons =
+                document.querySelector(".auth-buttons");
+
+            navigation.classList.toggle("mobile-open");
+
+            authButtons.classList.toggle("mobile-open");
+
+        }
+
+    </script>
+
 </body>
+
 </html>
