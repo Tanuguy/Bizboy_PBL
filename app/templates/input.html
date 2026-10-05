@@ -1,325 +1,157 @@
 {% extends "userbase.html" %}
 {% block title %}Input Data - BIZBOY{% endblock %}
+
 {% block content %}
 <div class="input-page">
-    <section class="input-header">
-        <div>
-            <span class="input-label">BUSINESS DATA</span>
-            <h1>Input Your Business Data</h1>
-            <p>Upload your business files and BIZBOY will read, analyze, organize and prepare the data for your dashboard.</p>
-        </div>
-        <a href="{{ url_for('home.dashboard') }}" class="back-btn">← Dashboard</a>
-    </section>
+    <div class="input-card">
 
-    <section class="input-layout">
-        <div class="input-card upload-card">
-            <div class="card-top">
-                <div>
-                    <span class="small-label">STEP 01</span>
-                    <h2>Upload Your Files</h2>
-                </div>
-                <div class="step-number">01</div>
+        <span class="input-label">BUSINESS DATA</span>
+        <h1>Upload Business Data</h1>
+        <p>Upload your CSV, Excel or JSON files and BIZBOY will organize the data for your dashboard.</p>
+
+        <form id="uploadForm" method="POST" action="{{ url_for('home.input_data') }}" enctype="multipart/form-data">
+
+            <label for="business_files" class="upload-area" id="uploadArea">
+                <div class="upload-icon">↑</div>
+                <h3>Choose your files</h3>
+                <p>Drag and drop files here or <span>browse</span></p>
+                <small>CSV, XLSX, XLS or JSON</small>
+            </label>
+
+            <input type="file" id="business_files" name="business_files" multiple accept=".csv,.xlsx,.xls,.json">
+
+            <div id="selected-files" class="selected-files">
+                <p>No files selected</p>
             </div>
-            <p class="card-description">Upload CSV, Excel or JSON files containing your business information.</p>
-            <form id="uploadForm" method="POST" action="{{ url_for('home.input_data') }}" enctype="multipart/form-data">
-                <label for="business_files" class="upload-area" id="uploadArea">
-                    <div class="upload-icon">↑</div>
-                    <h3>Choose business files</h3>
-                    <p>Drag and drop your files here or <span>browse from your computer</span></p>
-                    <small>CSV, XLSX, XLS or JSON</small>
-                </label>
-                <input type="file" id="business_files" name="business_files" multiple accept=".csv,.xlsx,.xls,.json">
-                <div id="selected-files" class="selected-files">
-                    <p class="no-files">No files selected</p>
-                </div>
-                <button type="submit" class="process-btn" id="processBtn">
-                    <span id="processBtnText">Analyze & Process Data</span>
-                    <span class="process-arrow" id="processArrow">→</span>
-                </button>
-            </form>
+
+            <button type="submit" class="process-btn" id="processBtn">
+                <span id="processBtnText">Upload & Process</span>
+                <span id="processArrow">→</span>
+            </button>
+
+        </form>
+
+        <div class="file-info">
+            <strong>Supported data:</strong>
+            Sales, Products, Production, Expenses and Customer Data.
         </div>
 
-        <div class="input-card information-card">
-            <div class="card-top">
-                <div>
-                    <span class="small-label">STEP 02</span>
-                    <h2>What Can You Upload?</h2>
-                </div>
-                <div class="step-number">02</div>
-            </div>
-            <p class="card-description">Your files can contain different types of business information.</p>
-            <div class="data-type-list">
-                <div class="data-type">
-                    <div class="data-icon">S</div>
-                    <div>
-                        <strong>Sales Data</strong>
-                        <span>Product, quantity, amount, date, region and transactions.</span>
-                    </div>
-                </div>
-                <div class="data-type">
-                    <div class="data-icon">P</div>
-                    <div>
-                        <strong>Product Data</strong>
-                        <span>Product name, category and price.</span>
-                    </div>
-                </div>
-                <div class="data-type">
-                    <div class="data-icon">E</div>
-                    <div>
-                        <strong>Expense Data</strong>
-                        <span>Expense category, amount and date.</span>
-                    </div>
-                </div>
-                <div class="data-type">
-                    <div class="data-icon">C</div>
-                    <div>
-                        <strong>Customer Data</strong>
-                        <span>Customer-related transactions and purchase information.</span>
-                    </div>
-                </div>
-                <div class="data-type">
-                    <div class="data-icon">P</div>
-                    <div>
-                        <strong>Production Data</strong>
-                        <span>Production quantity, price and production dates.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+        <a href="{{ url_for('home.dashboard') }}" class="back-btn">← Back to Dashboard</a>
 
-    <section class="processing-section">
-        <div class="processing-heading">
-            <span class="input-label">HOW BIZBOY PROCESSES YOUR DATA</span>
-            <h2>From File to Business Insight</h2>
-            <p>You don't need to manually enter every record. BIZBOY reads your files and organizes the available business information.</p>
-        </div>
-        <div class="processing-steps">
-            <div class="processing-step">
-                <div class="processing-number">01</div>
-                <h3>Upload</h3>
-                <p>Select your CSV, Excel or JSON files.</p>
-            </div>
-            <div class="processing-line"></div>
-            <div class="processing-step">
-                <div class="processing-number">02</div>
-                <h3>Analyze</h3>
-                <p>BIZBOY identifies columns and business data.</p>
-            </div>
-            <div class="processing-line"></div>
-            <div class="processing-step">
-                <div class="processing-number">03</div>
-                <h3>Organize</h3>
-                <p>Data is mapped to the appropriate database records.</p>
-            </div>
-            <div class="processing-line"></div>
-            <div class="processing-step">
-                <div class="processing-number">04</div>
-                <h3>Dashboard</h3>
-                <p>Your dashboard updates with available business data.</p>
-            </div>
-        </div>
-    </section>
-
-    <section class="input-notice">
-        <div class="notice-icon">i</div>
-        <div>
-            <h3>Tips for better results</h3>
-            <p>Keep column names clear where possible. For example: Product Name, Quantity, Sales Amount, Category, Region and Date. Different column names can still be mapped during the processing step.</p>
-        </div>
-    </section>
+    </div>
 </div>
 
 <div id="processingOverlay" class="processing-overlay">
     <div class="processing-card">
-        <div class="processing-top">
-            <div class="processing-icon"><span></span></div>
-            <div>
-                <h2>Analyzing Your Business Data</h2>
-                <p id="processingStatus">Preparing your files...</p>
-            </div>
+        <div class="loader"></div>
+        <h2>Processing Your Data</h2>
+        <p id="processingStatus">Preparing your files...</p>
+
+        <div class="progress-track">
+            <div id="processingProgressBar" class="progress-bar"></div>
         </div>
 
-        <div class="processing-graph">
-            <div class="graph-y-axis">
-                <span></span><span></span><span></span><span></span>
-            </div>
-            <div class="graph-area">
-                <div class="graph-grid grid-1"></div>
-                <div class="graph-grid grid-2"></div>
-                <div class="graph-grid grid-3"></div>
-                <div class="graph-grid grid-4"></div>
-                <div class="graph-bars">
-                    <div class="graph-bar bar-1"><span></span></div>
-                    <div class="graph-bar bar-2"><span></span></div>
-                    <div class="graph-bar bar-3"><span></span></div>
-                    <div class="graph-bar bar-4"><span></span></div>
-                    <div class="graph-bar bar-5"><span></span></div>
-                    <div class="graph-bar bar-6"><span></span></div>
-                    <div class="graph-bar bar-7"><span></span></div>
-                </div>
-                <svg class="growth-line" viewBox="0 0 500 180" preserveAspectRatio="none">
-                    <path d="M0,145 C50,135 65,150 100,120 C135,90 150,125 190,105 C230,85 250,95 280,75 C320,50 340,75 370,48 C410,20 435,45 500,10"/>
-                </svg>
-            </div>
-        </div>
-
-        <div class="processing-progress">
-            <div class="progress-header">
-                <span id="processingStep">Reading files</span>
-                <span id="processingPercent">0%</span>
-            </div>
-            <div class="progress-track">
-                <div id="processingProgressBar" class="progress-bar"></div>
-            </div>
-        </div>
-
-        <div class="processing-stages">
-            <div class="processing-stage active" id="stage-read">
-                <div class="stage-dot">✓</div>
-                <span>Reading files</span>
-            </div>
-            <div class="processing-stage" id="stage-analyze">
-                <div class="stage-dot">2</div>
-                <span>Analyzing data</span>
-            </div>
-            <div class="processing-stage" id="stage-store">
-                <div class="stage-dot">3</div>
-                <span>Organizing database</span>
-            </div>
-            <div class="processing-stage" id="stage-dashboard">
-                <div class="stage-dot">4</div>
-                <span>Preparing dashboard</span>
-            </div>
-        </div>
-        <div class="processing-note">
-            <span class="note-dot"></span>
-            Please don't close this window while your data is being processed.
-        </div>
+        <div class="processing-percent" id="processingPercent">0%</div>
     </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const uploadForm = document.getElementById("uploadForm");
-    const fileInput = document.getElementById("business_files");
-    const selectedFiles = document.getElementById("selected-files");
-    const uploadArea = document.getElementById("uploadArea");
-    const processBtn = document.getElementById("processBtn");
-    const processBtnText = document.getElementById("processBtnText");
-    const processArrow = document.getElementById("processArrow");
-    const processingOverlay = document.getElementById("processingOverlay");
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("uploadForm");
+        const input = document.getElementById("business_files");
+        const filesBox = document.getElementById("selected-files");
+        const area = document.getElementById("uploadArea");
+        const overlay = document.getElementById("processingOverlay");
+        const button = document.getElementById("processBtn");
+        const buttonText = document.getElementById("processBtnText");
+        const arrow = document.getElementById("processArrow");
 
-    fileInput.addEventListener("change", function () {
-        showSelectedFiles(this.files);
-    });
-
-    uploadArea.addEventListener("dragover", function (event) {
-        event.preventDefault();
-        uploadArea.classList.add("dragging");
-    });
-
-    uploadArea.addEventListener("dragleave", function () {
-        uploadArea.classList.remove("dragging");
-    });
-
-    uploadArea.addEventListener("drop", function (event) {
-        event.preventDefault();
-        uploadArea.classList.remove("dragging");
-        if (event.dataTransfer.files.length > 0) {
-            fileInput.files = event.dataTransfer.files;
-            showSelectedFiles(event.dataTransfer.files);
-        }
-    });
-
-    function showSelectedFiles(files) {
-        selectedFiles.innerHTML = "";
-        if (!files || files.length === 0) {
-            selectedFiles.innerHTML = '<p class="no-files">No files selected</p>';
-            return;
-        }
-        Array.from(files).forEach(function (file) {
-            const fileItem = document.createElement("div");
-            fileItem.className = "selected-file";
-            fileItem.innerHTML = `
-                <div class="file-name">
-                    <span class="file-icon">▣</span>
-                    <span>${escapeHTML(file.name)}</span>
-                </div>
-                <span class="file-size">${formatFileSize(file.size)}</span>
-            `;
-            selectedFiles.appendChild(fileItem);
+        input.addEventListener("change", function () {
+            showFiles(this.files);
         });
-    }
 
-    uploadForm.addEventListener("submit", function () {
-        if (!fileInput.files || fileInput.files.length === 0) {
-            return;
-        }
-        processingOverlay.classList.add("show");
-        processBtn.disabled = true;
-        processBtnText.textContent = "Processing Data...";
-        processArrow.textContent = "⟳";
-        startProcessingAnimation();
-    });
+        area.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            area.classList.add("dragging");
+        });
 
-    function startProcessingAnimation() {
-        const status = document.getElementById("processingStatus");
-        const step = document.getElementById("processingStep");
-        const percent = document.getElementById("processingPercent");
-        const progressBar = document.getElementById("processingProgressBar");
-        const stageRead = document.getElementById("stage-read");
-        const stageAnalyze = document.getElementById("stage-analyze");
-        const stageStore = document.getElementById("stage-store");
-        const stageDashboard = document.getElementById("stage-dashboard");
-        
-        let progress = 0;
-        const progressTimer = setInterval(function () {
-            if (progress < 25) {
-                progress += 1;
-                status.textContent = "Reading your business files...";
-                step.textContent = "Reading files";
-                stageRead.classList.add("active");
-            } else if (progress < 55) {
-                progress += 0.7;
-                status.textContent = "Analyzing columns and business data...";
-                step.textContent = "Analyzing data";
-                stageRead.classList.add("completed");
-                stageAnalyze.classList.add("active");
-            } else if (progress < 80) {
-                progress += 0.45;
-                status.textContent = "Organizing records into the database...";
-                step.textContent = "Organizing database";
-                stageAnalyze.classList.add("completed");
-                stageStore.classList.add("active");
-            } else if (progress < 90) {
-                progress += 0.15;
-                status.textContent = "Preparing your business dashboard...";
-                step.textContent = "Preparing dashboard";
-                stageStore.classList.add("completed");
-                stageDashboard.classList.add("active");
+        area.addEventListener("dragleave", function () {
+            area.classList.remove("dragging");
+        });
+
+        area.addEventListener("drop", function (e) {
+            e.preventDefault();
+            area.classList.remove("dragging");
+
+            if (e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                showFiles(input.files);
             }
-            progress = Math.min(progress, 90);
-            percent.textContent = Math.floor(progress) + "%";
-            progressBar.style.width = progress + "%";
-        }, 80);
-    }
+        });
 
-    function formatFileSize(bytes) {
-        if (bytes === 0) return "0 KB";
-        const kb = bytes / 1024;
-        if (kb < 1024) return kb.toFixed(1) + " KB";
-        return (kb / 1024).toFixed(1) + " MB";
-    }
+        function showFiles(files) {
+            filesBox.innerHTML = "";
 
-    function escapeHTML(value) {
-        return String(value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-});
+            if (!files.length) {
+                filesBox.innerHTML = "<p>No files selected</p>";
+                return;
+            }
+
+            Array.from(files).forEach(function (file) {
+                const item = document.createElement("div");
+                item.className = "selected-file";
+                item.innerHTML = "<span>▣ " + escapeHTML(file.name) + "</span><small>" + formatSize(file.size) + "</small>";
+                filesBox.appendChild(item);
+            });
+        }
+
+        form.addEventListener("submit", function () {
+            if (!input.files.length) return;
+
+            overlay.classList.add("show");
+            button.disabled = true;
+            buttonText.textContent = "Processing...";
+            arrow.textContent = "⟳";
+
+            startLoading();
+        });
+
+        function startLoading() {
+            const status = document.getElementById("processingStatus");
+            const percent = document.getElementById("processingPercent");
+            const bar = document.getElementById("processingProgressBar");
+            let progress = 0;
+
+            const timer = setInterval(function () {
+                if (progress < 30) {
+                    progress += 1;
+                    status.textContent = "Reading your files...";
+                } else if (progress < 60) {
+                    progress += 0.7;
+                    status.textContent = "Analyzing business data...";
+                } else if (progress < 85) {
+                    progress += 0.4;
+                    status.textContent = "Organizing your data...";
+                } else if (progress < 90) {
+                    progress += 0.15;
+                    status.textContent = "Preparing dashboard...";
+                }
+
+                progress = Math.min(progress, 90);
+                percent.textContent = Math.floor(progress) + "%";
+                bar.style.width = progress + "%";
+            }, 80);
+        }
+
+        function formatSize(bytes) {
+            if (!bytes) return "0 KB";
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+            return (bytes / 1024 / 1024).toFixed(1) + " MB";
+        }
+
+        function escapeHTML(value) {
+            return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    });
 </script>
 {% endblock %}
