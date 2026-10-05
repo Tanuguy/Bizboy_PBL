@@ -1,31 +1,23 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <title>{% block title %}Dashboard - BIZBOY{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/usercss.css') }}" />
-    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BIZBOY{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/usercss.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
 </head>
 
 <body>
     <header class="dashboard-header">
-        <div class="dashboard-brand">
-            <a href="{{ url_for('home.homepg') }}">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY Logo" />
-            </a>
-            <div>
-                <h2>BIZBOY</h2>
-                <span>Business Intelligence</span>
-            </div>
-        </div>
-
+        <a href="{{ url_for('home.dashboard') }}" class="dashboard-brand">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY">
+            <span>BIZBOY</span>
+        </a>
         <nav class="dashboard-nav">
-            <a href="{{ url_for('home.dashboard') }}" class="active"> Dashboard </a>
-            <a href="{{ url_for('home.profile') }}"> Profile </a>
-            <a href="{{ url_for('auth.logout') }}" class="logout-link"> Logout </a>
+            <a href="{{ url_for('home.dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('home.profile') }}">Profile</a>
         </nav>
         <button class="mobile-menu" onclick="toggleDashboardMenu()">☰</button>
     </header>
@@ -37,23 +29,17 @@
             <div class="alert alert-{{ category }}">{{ message }}</div>
             {% endfor %}
         </div>
-        {% endif %} 
-        {% endwith %} 
-        {% block content %} 
-        {% endblock %}
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
     </main>
     <footer class="dashboard-footer">
-        <div>
-            <strong>BIZBOY</strong>
-            <span>Build. Manage. Grow.</span>
-        </div>
-        <p>© 2026 BIZBOY. All rights reserved.</p>
+        <span>BIZBOY</span>
+        <span>© 2026</span>
     </footer>
-
     <script>
         function toggleDashboardMenu() {
-            const nav = document.querySelector(".dashboard-nav");
-            nav.classList.toggle("mobile-open");
+            document.querySelector(".dashboard-nav").classList.toggle("mobile-open");
         }
     </script>
 </body>

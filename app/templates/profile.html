@@ -1,158 +1,44 @@
-{% extends "userbase.html" %} {% block title %} Profile - BIZBOY {% endblock %}
+{% extends "userbase.html" %}
+{% block title %}Profile - BIZBOY{% endblock %}
+
 {% block content %}
-
 <div class="profile-page">
-  <!-- =====================================================
-         PROFILE HEADER
-    ====================================================== -->
+    <div class="profile-card">
 
-  <section class="profile-header">
-    <div class="profile-heading">
-      <span class="profile-label"> ACCOUNT </span>
-
-      <h1>Your Profile</h1>
-
-      <p>Manage your personal and business information.</p>
-    </div>
-
-    <a href="{{ url_for('home.dashboard') }}" class="profile-back-btn">
-      ← Dashboard
-    </a>
-  </section>
-
-  <!-- =====================================================
-         PROFILE LAYOUT
-    ====================================================== -->
-
-  <section class="profile-layout">
-    <!-- =================================================
-             PROFILE CARD
-        ================================================== -->
-
-    <div class="profile-card profile-main-card">
-      <div class="profile-card-header">
         <div class="profile-avatar">
-          {{ user.name[0]|upper if user.name else "U" }}
+            {{ user.name[0]|upper if user.name else "U" }}
         </div>
 
-        <div>
-          <span class="profile-small-label"> BUSINESS ACCOUNT </span>
+        <h1>{{ user.name }}</h1>
+        <p class="profile-business">{{ user.business_name }}</p>
 
-          <h2>{{ user.name }}</h2>
-
-          <p>{{ user.business_name }}</p>
-        </div>
-      </div>
-
-      <!-- PERSONAL INFORMATION -->
-
-      <div class="profile-section">
-        <div class="section-title">
-          <div>
-            <span class="profile-small-label"> PERSONAL INFORMATION </span>
-
-            <h3>Account Details</h3>
-          </div>
-        </div>
-
-        <div class="profile-fields">
-          <div class="profile-field">
-            <span class="field-label"> Your Name </span>
-
-            <div class="field-value">{{ user.name or "Not provided" }}</div>
-          </div>
-
-          <div class="profile-field">
-            <span class="field-label"> Email Address </span>
-
-            <div class="field-value">{{ user.email or "Not provided" }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- BUSINESS INFORMATION -->
-
-      <div class="profile-section">
-        <div class="section-title">
-          <div>
-            <span class="profile-small-label"> BUSINESS INFORMATION </span>
-
-            <h3>Business Details</h3>
-          </div>
-        </div>
-
-        <div class="profile-fields">
-          <div class="profile-field">
-            <span class="field-label"> Business Name </span>
-
-            <div class="field-value">
-              {{ user.business_name or "Not provided" }}
+        <div class="profile-details">
+            <div>
+                <span>Name</span>
+                <strong>{{ user.name or "Not provided" }}</strong>
             </div>
-          </div>
 
-          <div class="profile-field">
-            <span class="field-label"> Business Type </span>
-
-            <div class="field-value">
-              {{ user.business_type or "Business" }}
+            <div>
+                <span>Email</span>
+                <strong>{{ user.email or "Not provided" }}</strong>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="profile-section">
-        <div class="section-title">
-          <div>
-            <span class="profile-small-label"> ACCOUNT </span>
-            <h3>Account Information</h3>
-          </div>
+            <div>
+                <span>Business Name</span>
+                <strong>{{ user.business_name or "Not provided" }}</strong>
+            </div>
+
+            <div>
+                <span>Business Type</span>
+                <strong>{{ user.business_type or "Business" }}</strong>
+            </div>
         </div>
-        <div class="account-info-row">
-          <div>
-            <span class="field-label"> Account ID </span>
-            <strong> #{{ user.user_id }} </strong>
-          </div>
-          <div class="account-status">
-            <span class="status-dot"></span>
-            <span> Active Account </span>
-          </div>
+
+        <div class="profile-actions">
+            <a href="{{ url_for('home.dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
-      </div>
+
     </div>
-
-    <aside class="profile-side">
-      <div class="profile-card summary-card">
-        <span class="profile-small-label"> BIZBOY </span>
-        <h3>Business Intelligence</h3>
-        <p>Your business information is connected to this BIZBOY account.</p>
-        <a href="{{ url_for('home.dashboard') }}" class="profile-action-btn">
-          View Dashboard
-          <span>→</span>
-        </a>
-      </div>
-      <div class="profile-card profile-action-card">
-        <span class="profile-small-label"> DATA </span>
-
-        <h3>Manage Your Data</h3>
-
-        <p>
-          Upload new business files and update the information available in your
-          dashboard.
-        </p>
-
-        <a href="{{ url_for('home.input_data') }}" class="secondary-action-btn">
-          Input Business Data
-          <span>→</span>
-        </a>
-      </div>
-      <div class="profile-card account-actions-card">
-        <span class="profile-small-label"> ACCOUNT ACTIONS </span>
-
-        <a href="{{ url_for('auth.logout') }}" class="logout-profile-btn">
-          Logout
-        </a>
-      </div>
-    </aside>
-  </section>
 </div>
 {% endblock %}

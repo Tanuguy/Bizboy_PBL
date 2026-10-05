@@ -1,136 +1,56 @@
-{% extends "mainbase.html" %} {% block title %} Login - BIZBOY {% endblock %} {%
-block extra_css %}
-<link
-  rel="stylesheet"
-  href="{{ url_for('static', filename='css/authcss.css') }}"
-/>
-{% endblock %} {% block content %}
+{% extends "mainbase.html" %}
+
+{% block title %}Login - BIZBOY{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/authcss.css') }}">
+{% endblock %}
+
+{% block content %}
 
 <div class="auth-page">
-  <div class="auth-container">
-    <!-- LEFT SIDE -->
-    <div class="auth-info">
-      <div class="auth-brand">
-        <img
-          src="{{ url_for('static', filename='images/logo.png') }}"
-          alt="BIZBOY Logo"
-        />
+  <div class="auth-card">
 
-        <div>
-          <strong>BIZBOY</strong>
-          <span>Business Intelligence</span>
-        </div>
-      </div>
-
-      <div class="auth-info-content">
-        <span class="auth-label"> BUSINESS INTELLIGENCE </span>
-
-        <h1>Turn your business data into better decisions.</h1>
-
-        <p>
-          Access your BIZBOY dashboard to understand sales, expenses, products,
-          customers and business performance.
-        </p>
-
-        <div class="auth-features">
-          <div class="auth-feature">
-            <span>01</span>
-            <div>
-              <strong>Understand</strong>
-              <p>See what is happening in your business.</p>
-            </div>
-          </div>
-
-          <div class="auth-feature">
-            <span>02</span>
-            <div>
-              <strong>Analyze</strong>
-              <p>Turn your business data into insights.</p>
-            </div>
-          </div>
-
-          <div class="auth-feature">
-            <span>03</span>
-            <div>
-              <strong>Grow</strong>
-              <p>Use insights to plan your next move.</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="auth-logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY Logo">
     </div>
 
-    <!-- RIGHT SIDE -->
-    <div class="auth-card">
-      <div class="auth-card-header">
-        <span class="small-label"> WELCOME BACK </span>
-
-        <h2>Login to BIZBOY</h2>
-
-        <p>Access your business intelligence dashboard.</p>
-      </div>
-
-      <form
-        method="POST"
-        action="{{ url_for('auth.login') }}"
-        class="auth-form"
-      >
-        <div class="form-group">
-          <label for="email"> Email Address </label>
-
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="Enter your email"
-            autocomplete="email"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <div class="password-label">
-            <label for="password"> Password </label>
-
-            <a href="#"> Forgot password? </a>
-          </div>
-
-          <div class="password-wrapper">
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="Enter your password"
-              autocomplete="current-password"
-              required
-            />
-
-            <button
-              type="button"
-              class="password-toggle"
-              onclick="togglePassword('password', this)"
-            >
-              Show
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" class="auth-submit">
-          Login
-          <span>→</span>
-        </button>
-      </form>
-
-      <div class="auth-divider">
-        <span>OR</span>
-      </div>
-
-      <div class="auth-switch">
-        <p>Don't have a BIZBOY account?</p>
-
-        <a href="{{ url_for('auth.register') }}"> Create an account </a>
-      </div>
+    <div class="auth-card-header">
+      <h2>Login to BIZBOY</h2>
+      <p>Access your business dashboard.</p>
     </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="Enter your email" autocomplete="email" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+
+        <div class="password-wrapper">
+          <input type="password" id="password" name="password" placeholder="Enter your password"
+            autocomplete="current-password" required>
+
+          <button type="button" class="password-toggle" onclick="togglePassword('password', this)">
+            Show
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="auth-submit">
+        Login
+      </button>
+
+    </form>
+
+    <div class="auth-switch">
+      <span>Don't have an account?</span>
+      <a href="{{ url_for('auth.register') }}">Create an account</a>
+    </div>
+
   </div>
 </div>
 
