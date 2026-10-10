@@ -13,7 +13,6 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 supabase = create_client(SUPABASE_URL,SUPABASE_SECRET_KEY)
 
-
 def main_create():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY","temporary-development-secret-key")
