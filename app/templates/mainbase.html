@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,26 +41,48 @@
     </header>
 
     <main class="main-container">
+    <div class="flash-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-container">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            <span class="alert-icon">
-                                {% if category == "success" %}✓
-                                {% elif category == "danger" %}!
-                                {% elif category == "warning" %}⚠
-                                {% else %}i
-                                {% endif %}
-                            </span>
-                            <span>{{ message }}</span>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="status">
+            <span class="alert-icon">
+                {% if category == "success" %}✓
+                {% elif category in ["danger", "error"] %}!
+                {% elif category == "warning" %}⚠
+                {% else %}i
+                {% endif %}
+            </span>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
         {% endwith %}
+    </div>
+
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        document.querySelectorAll(".flash-container .alert").forEach(alert => {
+            setTimeout(() => {
+                alert.classList.add("hide");
+
+                alert.addEventListener("animationend", () => {
+                    alert.remove();
+
+                    const container = document.querySelector(".flash-container");
+                    if (container && !container.querySelector(".alert")) {
+                        container.remove();
+                    }
+                }, { once: true });
+            }, 5000);
+        });
+
+        const flashContainer = document.querySelector(".flash-container");
+
+        if (flashContainer && !flashContainer.querySelector(".alert")) {
+            flashContainer.remove();
+        }
+    </script>
 
     <footer class="main-footer">
         <div class="footer-content">
@@ -94,4 +117,5 @@
         }
     </script>
 </body>
+
 </html>

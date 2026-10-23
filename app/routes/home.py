@@ -1,12 +1,19 @@
 import json
 import re
 import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import IsolationForest
+from sklearn.metrics import mean_absolute_error
+import numpy as np
+import random
 import plotly.graph_objects as go
 from plotly.utils import PlotlyJSONEncoder
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
-from sqlalchemy import func
-from app import db
+from sqlalchemy import func,cast,String
+from app import db,cache
 from app.models import User, Product, Sales, Production, Expenses, CustomerData, Prediction, Analysis
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 home = Blueprint("home", __name__)
 
@@ -299,43 +306,127 @@ def process_data(df, user_id, source, product_code_map):
     db.session.flush()
     return result
 
+
 def create_analysis(user_id):
     Analysis.query.filter_by(user_id=user_id, analysis_type="Automated Summary").delete(synchronize_session=False)
 
-    total_products = Product.query.filter_by(user_id=user_id).count()
-    total_sales_records = Sales.query.filter_by(user_id=user_id).count()
-    total_production = Production.query.filter_by(user_id=user_id).count()
-    total_customers = CustomerData.query.filter_by(user_id=user_id).count()
+    analyses = []
+    add_analysis = lambda name, description: analyses.append(Analysis(user_id=user_id, ana_name=name, description=description, analysis_type="Automated Summary"))
 
-    total_sales = db.session.query(func.coalesce(func.sum(Sales.amount_of_sales), 0)).filter(Sales.user_id == user_id).scalar()
-    total_expenses = db.session.query(func.coalesce(func.sum(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar()
-
-    total_sales = float(total_sales or 0)
-    total_expenses = float(total_expenses or 0)
+    products = Product.query.filter_by(user_id=user_id).all()
+    sales_records = Sales.query.filter_by(user_id=user_id).all()
+    production_records = Production.query.filter_by(user_id=user_id).all()
+    customer_records = CustomerData.query.filter_by(user_id=user_id).count()
+    total_sales = float(db.session.query(func.coalesce(func.sum(Sales.amount_of_sales), 0)).filter(Sales.user_id == user_id).scalar() or 0)
+    total_expenses = float(db.session.query(func.coalesce(func.sum(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0)
     net_amount = total_sales - total_expenses
 
-    analyses = [
-        Analysis(user_id=user_id, ana_name="Business Overview", description=f"The business has {total_products} products, {total_sales_records} sales records, {total_production} production records and {total_customers} customer records.", analysis_type="Automated Summary"),
-        Analysis(user_id=user_id, ana_name="Sales Summary", description=f"Total recorded sales are ₹{total_sales:,.2f}.", analysis_type="Automated Summary"),
-        Analysis(user_id=user_id, ana_name="Expense Summary", description=f"Total recorded expenses are ₹{total_expenses:,.2f}.", analysis_type="Automated Summary"),
-        Analysis(user_id=user_id, ana_name="Net Business Amount", description=f"Sales minus expenses equals ₹{net_amount:,.2f}.", analysis_type="Automated Summary")
-    ]
+    add_analysis("Business Data Insights", f"Analysis of {len(products)} products, {len(sales_records)} sales records, {len(production_records)} production records and {customer_records} customer records found total sales of ₹{total_sales:,.2f} and recorded expenses of ₹{total_expenses:,.2f}.")
 
-    top_product = db.session.query(Product.product_name, func.sum(Sales.amount_of_sales).label("total")).join(Sales, Product.product_id == Sales.product_id).filter(Product.user_id == user_id).group_by(Product.product_id, Product.product_name).order_by(func.sum(Sales.amount_of_sales).desc()).first()
+    if sales_records:
+        sales_df = pd.DataFrame([{"date": row.date_of_sales, "amount": float(row.amount_of_sales or 0), "product_id": row.product_id} for row in sales_records])
+        sales_df["date"] = pd.to_datetime(sales_df["date"], errors="coerce")
+        sales_df["amount"] = pd.to_numeric(sales_df["amount"], errors="coerce")
+        sales_df = sales_df.dropna(subset=["amount"])
 
-    if top_product:
-        analyses.append(Analysis(user_id=user_id, ana_name="Top Selling Product", description=f"{top_product[0]} has the highest recorded sales value of ₹{float(top_product[1] or 0):,.2f}.", analysis_type="Automated Summary"))
+        if not sales_df.empty:
+            average_sale = float(sales_df["amount"].mean())
+            add_analysis("Average Sales Value", f"The average recorded sales value is ₹{average_sale:,.2f} across {len(sales_df)} valid sales records.")
 
-    db.session.add_all(analyses)
-    
+            if total_sales > 0 and total_expenses > 0:
+                expense_ratio = total_expenses / total_sales * 100
+                add_analysis("Expense Ratio Insight", f"Recorded expenses represent {expense_ratio:.2f}% of recorded sales. Sales minus recorded expenses equals ₹{net_amount:,.2f}; this is not necessarily accounting profit.")
+
+            valid_dates = sales_df.dropna(subset=["date"])
+            if not valid_dates.empty:
+                daily_sales = valid_dates.groupby(valid_dates["date"].dt.normalize())["amount"].sum().sort_index()
+
+                if len(daily_sales) >= 2:
+                    first_value = float(daily_sales.iloc[0])
+                    last_value = float(daily_sales.iloc[-1])
+                    change = last_value - first_value
+                    trend = "increased" if change > 0 else "decreased" if change < 0 else "remained unchanged"
+                    add_analysis("Historical Sales Change", f"Sales changed from ₹{first_value:,.2f} on {daily_sales.index[0].date()} to ₹{last_value:,.2f} on {daily_sales.index[-1].date()}; the recorded value {trend} by ₹{abs(change):,.2f}. This compares the first and last recorded sales days, not equivalent periods.")
+
+                if len(daily_sales) >= 5:
+                    x = np.arange(len(daily_sales)).reshape(-1, 1)
+                    y = daily_sales.to_numpy(dtype=float)
+                    model = LinearRegression().fit(x, y)
+                    next_index = np.array([[len(daily_sales)]])
+                    prediction = max(0.0, float(model.predict(next_index)[0]))
+                    trend = "upward" if model.coef_[0] > 0 else "downward" if model.coef_[0] < 0 else "flat"
+                    add_analysis("ML Sales Forecast", f"Linear regression estimates sales for the next observed sales interval at approximately ₹{prediction:,.2f}. The fitted historical trend is {trend}. This is a baseline estimate, not a guarantee.")
+
+                    variation = float(daily_sales.std(ddof=0))
+                    mean_sales = float(daily_sales.mean())
+                    if mean_sales > 0:
+                        cv = variation / mean_sales * 100
+                        level = "high" if cv > 50 else "moderate" if cv > 20 else "low"
+                        add_analysis("Sales Volatility", f"Daily sales have a coefficient of variation of {cv:.2f}%, indicating {level} variation relative to their mean.")
+
+                if len(daily_sales) >= 10:
+                    detector = IsolationForest(contamination="auto", random_state=42).fit(daily_sales.to_numpy().reshape(-1, 1))
+                    unusual = daily_sales[detector.predict(daily_sales.to_numpy().reshape(-1, 1)) == -1]
+                    if not unusual.empty:
+                        unusual_text = ", ".join(f"{date.date()}: ₹{amount:,.2f}" for date, amount in unusual.sort_values().tail(3).items())
+                        add_analysis("Unusual Sales Detection", f"Isolation Forest flagged these daily sales values as unusual: {unusual_text}. Review them for promotions, exceptional orders, or data errors.")
+
+            product_sales = sales_df.dropna(subset=["product_id"]).groupby("product_id")["amount"].sum().sort_values(ascending=False)
+            product_lookup = {product.product_id: product.product_name for product in products}
+
+            if not product_sales.empty:
+                best_id = product_sales.index[0]
+                best_value = float(product_sales.iloc[0])
+                best_name = product_lookup.get(best_id, f"Product {best_id}")
+                add_analysis("Leading Product", f"{best_name} has the highest recorded sales value at ₹{best_value:,.2f}.")
+
+                if total_sales > 0:
+                    share = best_value / total_sales * 100
+                    add_analysis("Product Revenue Concentration", f"The leading product represents approximately {share:.2f}% of total recorded sales. A high share may indicate reliance on one product.")
+
+                if len(product_sales) >= 2:
+                    second_id = product_sales.index[1]
+                    second_name = product_lookup.get(second_id, f"Product {second_id}")
+                    second_value = float(product_sales.iloc[1])
+                    add_analysis("Product Sales Comparison", f"{best_name} recorded ₹{best_value:,.2f} in sales compared with ₹{second_value:,.2f} for {second_name}, a difference of ₹{best_value - second_value:,.2f}.")
+
+    if len(analyses) < 10 and total_sales > 0:
+        add_analysis("Sales and Expense Outlook", f"Recorded sales exceed expenses by ₹{net_amount:,.2f}." if net_amount >= 0 else f"Recorded expenses exceed sales by ₹{abs(net_amount):,.2f}. Review costs and revenue before drawing conclusions about profitability.")
+
+    if len(analyses) < 10 and products:
+        add_analysis("Product Portfolio Insight", f"There are {len(products)} products in the current portfolio. Compare product-level sales and costs to identify which products deserve more attention.")
+
+    if len(analyses) < 10 and production_records:
+        add_analysis("Production Data Coverage", f"The database contains {len(production_records)} production records. Production efficiency requires compatible production quantities, sales quantities, and time periods.")
+
+    if len(analyses) < 10 and customer_records:
+        add_analysis("Customer Data Coverage", f"The database contains {customer_records} customer records. Customer purchasing patterns require sales records linked to customer identifiers.")
+
+    db.session.add_all(analyses[:10])
+    db.session.commit()
+
+def apply_dark(fig):
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, Arial, sans-serif",color="#cbd5e1",size=12),
+        margin=dict(l=20, r=20, t=25, b=25),
+        legend=dict(bgcolor="rgba(0,0,0,0)",font=dict(color="#cbd5e1", size=11)),
+        hoverlabel=dict(bgcolor="#111b29",bordercolor="#29374a",font=dict(color="#f1f5f9"))
+    )
+    fig.update_xaxes(showgrid=False,zeroline=False,showline=True,linecolor="#29374a",tickfont=dict(color="#94a3b8"),title_font=dict(color="#cbd5e1"))
+    fig.update_yaxes(showgrid=True,gridcolor="rgba(148,163,184,0.12)",zeroline=False,showline=False,tickfont=dict(color="#94a3b8"),title_font=dict(color="#cbd5e1"))
+    fig.update_annotations(font=dict(color="#94a3b8", size=13))
+    return fig    
 
 @home.route("/")
 def homepg():
     if "user_id" in session:
         return redirect(url_for("home.dashboard"))
     return render_template("index.html")
-
 @home.route("/dashboard")
+@cache.cached(timeout=300, key_prefix=lambda: f"dashboard_{session.get('user_id', 'anonymous')}")
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("home.homepg"))
@@ -347,90 +438,85 @@ def dashboard():
         session.pop("user_id", None)
         return redirect(url_for("home.homepg"))
 
-    products = Product.query.filter_by(user_id=user_id).all()
-    sales = Sales.query.filter_by(user_id=user_id).all()
-    expenses = Expenses.query.filter_by(user_id=user_id).all()
-    customers = CustomerData.query.filter_by(user_id=user_id).all()
-    production = Production.query.filter_by(user_id=user_id).all()
-    predictions = Prediction.query.filter_by(user_id=user_id).all()
-    analysis = Analysis.query.filter_by(user_id=user_id).order_by(Analysis.ana_id.desc()).all()
+    total_products = Product.query.filter_by(user_id=user_id).count()
+    total_customers = CustomerData.query.filter_by(user_id=user_id).count()
+    total_production = Production.query.filter_by(user_id=user_id).count()
+    total_predictions = Prediction.query.filter_by(user_id=user_id).count()
+    total_sales_records = Sales.query.filter_by(user_id=user_id).count()
 
-    total_sales = sum(float(s.amount_of_sales or 0) for s in sales)
-    total_expenses = sum(float(e.price or 0) for e in expenses)
-    total_quantity = sum(int(s.quantity or 0) for s in sales)
+    total_sales = float(db.session.query(func.coalesce(func.sum(Sales.amount_of_sales), 0)).filter(Sales.user_id == user_id).scalar() or 0)
+    total_expenses = float(db.session.query(func.coalesce(func.sum(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0)
+    total_quantity = int(db.session.query(func.coalesce(func.sum(Sales.quantity), 0)).filter(Sales.user_id == user_id).scalar() or 0)
 
-    product_names = {product.product_id: product.product_name for product in products}
-    product_sales = {}
+    analysis = Analysis.query.filter_by(user_id=user_id).order_by(Analysis.ana_id.desc()).limit(10).all()
+    products = Product.query.filter_by(user_id=user_id).order_by(Product.product_name.asc()).limit(10).all()
 
-    for sale in sales:
-        name = product_names.get(sale.product_id, "Unknown Product")
-        product_sales[name] = product_sales.get(name, 0) + float(sale.amount_of_sales or 0)
+    monthly_sales_rows = db.session.query(func.date_trunc("month", Sales.time_period).label("month"), func.sum(Sales.amount_of_sales).label("total")).filter(Sales.user_id == user_id, Sales.time_period.isnot(None)).group_by(func.date_trunc("month", Sales.time_period)).order_by(func.date_trunc("month", Sales.time_period)).all()
+    monthly_expense_rows = db.session.query(func.date_trunc("month", Expenses.time_period).label("month"), func.sum(Expenses.price).label("total")).filter(Expenses.user_id == user_id, Expenses.time_period.isnot(None)).group_by(func.date_trunc("month", Expenses.time_period)).order_by(func.date_trunc("month", Expenses.time_period)).all()
 
-    monthly_sales = {}
-    monthly_expenses = {}
-
-    for sale in sales:
-        if sale.time_period:
-            month = sale.time_period.strftime("%Y-%m")
-            monthly_sales[month] = monthly_sales.get(month, 0) + float(sale.amount_of_sales or 0)
-
-    for expense in expenses:
-        if expense.time_period:
-            month = expense.time_period.strftime("%Y-%m")
-            monthly_expenses[month] = monthly_expenses.get(month, 0) + float(expense.price or 0)
-
+    monthly_sales = {month.strftime("%Y-%m"): float(total or 0) for month, total in monthly_sales_rows}
+    monthly_expenses = {month.strftime("%Y-%m"): float(total or 0) for month, total in monthly_expense_rows}
     months = sorted(set(monthly_sales) | set(monthly_expenses))
 
     if months:
         sales_chart = go.Figure()
-        sales_chart.add_trace(go.Bar(x=months, y=[monthly_sales.get(month, 0) for month in months], name="Sales"))
+        sales_chart.add_trace(go.Bar(x=months, y=[monthly_sales.get(month, 0) for month in months], name="Sales", marker_color="#7181ef", marker_line_width=0, hovertemplate="%{x}<br>Sales: %{y:,.2f}<extra></extra>"))
 
         revenue_chart = go.Figure()
-        revenue_chart.add_trace(go.Scatter(x=months, y=[monthly_sales.get(month, 0) for month in months], mode="lines+markers", name="Revenue"))
-        revenue_chart.add_trace(go.Scatter(x=months, y=[monthly_expenses.get(month, 0) for month in months], mode="lines+markers", name="Expenses"))
+        revenue_chart.add_trace(go.Scatter(x=months, y=[monthly_sales.get(month, 0) for month in months], mode="lines+markers", name="Revenue", line=dict(color="#7181ef", width=3), marker=dict(size=6, color="#7181ef"), hovertemplate="%{x}<br>Revenue: %{y:,.2f}<extra></extra>"))
+        revenue_chart.add_trace(go.Scatter(x=months, y=[monthly_expenses.get(month, 0) for month in months], mode="lines+markers", name="Expenses", line=dict(color="#fb7185", width=2.5), marker=dict(size=5, color="#fb7185"), hovertemplate="%{x}<br>Expenses: %{y:,.2f}<extra></extra>"))
     else:
         sales_chart = go.Figure()
-        sales_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        sales_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(color="#94a3b8", size=13))
 
         revenue_chart = go.Figure()
-        revenue_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        revenue_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(color="#94a3b8", size=13))
 
-    if product_sales:
-        top_products = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:10]
+    product_rows = db.session.query(Product.product_name, func.sum(Sales.amount_of_sales).label("total")).join(Product, Sales.product_id == Product.product_id).filter(Sales.user_id == user_id, Product.user_id == user_id).group_by(Product.product_id, Product.product_name).order_by(func.sum(Sales.amount_of_sales).desc()).limit(10).all()
+    top_products = [(name, float(total or 0)) for name, total in product_rows]
+
+    if top_products:
         product_chart = go.Figure()
-        product_chart.add_trace(go.Bar(x=[item[1] for item in top_products], y=[item[0] for item in top_products], orientation="h", name="Sales"))
+        product_chart.add_trace(go.Bar(x=[item[1] for item in top_products], y=[item[0] for item in top_products], orientation="h", name="Sales", marker_color="#818cf8", marker_line_width=0, hovertemplate="%{y}<br>Sales: %{x:,.2f}<extra></extra>"))
+        product_chart.update_layout(yaxis=dict(autorange="reversed"))
     else:
-        top_products = []
         product_chart = go.Figure()
-        product_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        product_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(color="#94a3b8", size=13))
 
-    regions = {}
-
-    for sale in sales:
-        region = sale.region_area or "Unknown"
-        regions[region] = regions.get(region, 0) + float(sale.amount_of_sales or 0)
+    region_rows = db.session.query(Sales.region_area, func.sum(Sales.amount_of_sales).label("total")).filter(Sales.user_id == user_id).group_by(Sales.region_area).order_by(func.sum(Sales.amount_of_sales).desc()).all()
+    regions = {(region or "Unknown"): float(total or 0) for region, total in region_rows}
 
     if regions:
         region_chart = go.Figure()
-        region_chart.add_trace(go.Pie(labels=list(regions.keys()), values=list(regions.values()), hole=0.55))
+        region_chart.add_trace(go.Pie(labels=list(regions.keys()), values=list(regions.values()), hole=0.55, marker=dict(colors=["#7181ef", "#fb7185", "#10b981", "#a78bfa", "#38bdf8"], line=dict(color="#111b29", width=3)), textfont=dict(color="#e2e8f0"), hovertemplate="%{label}<br>Sales: %{value:,.2f}<br>Share: %{percent}<extra></extra>"))
     else:
         region_chart = go.Figure()
-        region_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        region_chart.add_annotation(text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(color="#94a3b8", size=13))
 
-    recent_sales = sorted(sales, key=lambda x: x.time_period if x.time_period else pd.Timestamp.min, reverse=True)[:10]
+    sales_chart = apply_dark(sales_chart)
+    revenue_chart = apply_dark(revenue_chart)
+    product_chart = apply_dark(product_chart)
+    region_chart = apply_dark(region_chart)
+
+    recent_sales = Sales.query.filter_by(user_id=user_id).order_by(Sales.time_period.desc().nullslast(), Sales.sales_id.desc()).limit(10).all()
+
+    current_hour = datetime.now(ZoneInfo("Asia/Kolkata")).hour
+    greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 17 else "Good evening"
+
+    has_data = total_products > 0 or total_sales_records > 0 or total_expenses != 0 or total_customers > 0 or total_production > 0
 
     return render_template(
         "dashboard.html",
         user=user,
-        has_data=len(products) > 0 or len(sales) > 0 or len(expenses) > 0 or len(customers) > 0 or len(production) > 0,
+        has_data=has_data,
         total_sales=total_sales,
         total_expenses=total_expenses,
         net_amount=total_sales - total_expenses,
-        total_products=len(products),
-        total_customers=len(customers),
-        total_sales_records=len(sales),
-        total_production=len(production),
-        total_predictions=len(predictions),
+        total_products=total_products,
+        total_customers=total_customers,
+        total_sales_records=total_sales_records,
+        total_production=total_production,
+        total_predictions=total_predictions,
         total_analysis=len(analysis),
         total_quantity=total_quantity,
         recent_sales=recent_sales,
@@ -440,7 +526,8 @@ def dashboard():
         monthly_sales_chart=json.dumps(sales_chart, cls=PlotlyJSONEncoder),
         revenue_expenses_chart=json.dumps(revenue_chart, cls=PlotlyJSONEncoder),
         product_sales_chart=json.dumps(product_chart, cls=PlotlyJSONEncoder),
-        region_sales_chart=json.dumps(region_chart, cls=PlotlyJSONEncoder)
+        region_sales_chart=json.dumps(region_chart, cls=PlotlyJSONEncoder),
+        greeting=greeting
     )
 
 @home.route("/input-data", methods=["GET", "POST"])
@@ -488,8 +575,11 @@ def input_data():
 
         create_analysis(user_id)
         db.session.commit()
+        cache.delete(f"dashboard_{user_id}")
 
-        flash(f"Import completed successfully! {total['rows']:,} rows processed. {total['products']:,} products, {total['sales']:,} sales, {total['production']:,} production records, {total['expenses']:,} expenses and {total['customers']:,} customer records were stored.", "success")
+        for page_number in range(1, 1001):
+            cache.delete(f"sales_{user_id}_{page_number}")
+        flash(f"Import completed successfully! {total['rows']:,} rows processed. "f"{total['products']:,} products, {total['sales']:,} sales, "f"{total['production']:,} production records, "f"{total['expenses']:,} expenses and "f"{total['customers']:,} customer records were stored.","success")
         return redirect(url_for("home.dashboard"))
 
     except Exception as error:
@@ -510,3 +600,102 @@ def profile():
         return redirect(url_for("home.homepg"))
 
     return render_template("profile.html", user=user)
+
+@home.route("/sales")
+@cache.cached(timeout=3000, key_prefix=lambda: f"sales_{session.get('user_id', 'anonymous')}_{request.args.get('page', '1')}")
+def sales_page():
+    if "user_id" not in session:
+        return redirect(url_for("home.homepg"))
+
+    user_id = session["user_id"]
+    user = db.session.get(User, user_id)
+
+    if not user:
+        session.pop("user_id", None)
+        return redirect(url_for("home.homepg"))
+
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = 15
+
+    sales_query = db.session.query(Sales, Product).outerjoin(Product, (Sales.product_id == Product.product_id) & (Product.user_id == user_id)).filter(Sales.user_id == user_id)
+    total_transactions = sales_query.count()
+    total_pages = max(1, (total_transactions + per_page - 1) // per_page)
+    page = min(page, total_pages)
+
+    sales_records = sales_query.order_by(Sales.sales_id.desc()).offset((page - 1) * per_page).limit(per_page).all()
+
+    total_sales = float(db.session.query(func.coalesce(func.sum(Sales.amount_of_sales), 0)).filter(Sales.user_id == user_id).scalar() or 0)
+    total_quantity = int(db.session.query(func.coalesce(func.sum(Sales.quantity), 0)).filter(Sales.user_id == user_id).scalar() or 0)
+    unique_products = db.session.query(func.count(func.distinct(Sales.product_id))).filter(Sales.user_id == user_id, Sales.product_id.isnot(None)).scalar() or 0
+
+    monthly_rows = db.session.query(func.date_trunc("month", Sales.time_period).label("month"), func.sum(Sales.amount_of_sales).label("total_sales"), func.sum(Sales.quantity).label("total_quantity")).filter(Sales.user_id == user_id, Sales.time_period.isnot(None)).group_by(func.date_trunc("month", Sales.time_period)).order_by(func.date_trunc("month", Sales.time_period)).all()
+
+    monthly_sales = {month.strftime("%Y-%m"): float(amount or 0) for month, amount, quantity in monthly_rows}
+    monthly_quantity = {month.strftime("%Y-%m"): int(quantity or 0) for month, amount, quantity in monthly_rows}
+    months = sorted(monthly_sales.keys())
+
+    product_rows = db.session.query(Product.product_name, func.sum(Sales.amount_of_sales).label("total")).join(Product, Sales.product_id == Product.product_id).filter(Sales.user_id == user_id, Product.user_id == user_id).group_by(Product.product_id, Product.product_name).order_by(func.sum(Sales.amount_of_sales).desc()).limit(10).all()
+    top_products = [(name, float(amount or 0)) for name, amount in product_rows]
+
+    region_rows = db.session.query(Sales.region_area, func.sum(Sales.amount_of_sales).label("total")).filter(Sales.user_id == user_id).group_by(Sales.region_area).order_by(func.sum(Sales.amount_of_sales).desc()).all()
+    region_sales = {(region or "Unknown"): float(amount or 0) for region, amount in region_rows}
+
+    monthly_chart = go.Figure()
+    if months:
+        monthly_chart.add_trace(go.Bar(x=months, y=[monthly_sales[month] for month in months], name="Sales", marker_color="#7181ef", marker_line_width=0, hovertemplate="%{x}<br>Sales: %{y:,.2f}<extra></extra>"))
+    else:
+        monthly_chart.add_annotation(text="No sales data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+
+    product_chart = go.Figure()
+    if top_products:
+        product_chart.add_trace(go.Bar(x=[item[1] for item in top_products], y=[item[0] for item in top_products], orientation="h", name="Sales", marker_color="#818cf8", marker_line_width=0, hovertemplate="%{y}<br>Sales: %{x:,.2f}<extra></extra>"))
+        product_chart.update_layout(yaxis=dict(autorange="reversed"))
+    else:
+        product_chart.add_annotation(text="No product data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+
+    region_chart = go.Figure()
+    if region_sales:
+        region_chart.add_trace(go.Pie(labels=list(region_sales.keys()), values=list(region_sales.values()), hole=0.55, marker=dict(colors=["#7181ef", "#fb7185", "#10b981", "#a78bfa", "#38bdf8"], line=dict(color="#111b29", width=3)), textfont=dict(color="#e2e8f0"), hovertemplate="%{label}<br>Sales: %{value:,.2f}<br>Share: %{percent}<extra></extra>"))
+    else:
+        region_chart.add_annotation(text="No regional sales data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+
+    quantity_chart = go.Figure()
+    if months:
+        quantity_chart.add_trace(go.Scatter(x=months, y=[monthly_quantity[month] for month in months], mode="lines+markers", name="Quantity Sold", line=dict(color="#10b981", width=3), marker=dict(size=6), hovertemplate="%{x}<br>Quantity: %{y:,}<extra></extra>"))
+    else:
+        quantity_chart.add_annotation(text="No quantity data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+
+    monthly_chart = apply_dark(monthly_chart)
+    product_chart = apply_dark(product_chart)
+    region_chart = apply_dark(region_chart)
+    quantity_chart = apply_dark(quantity_chart)
+
+    return render_template("sales.html", user=user, sales_records=sales_records, total_sales=total_sales, total_transactions=total_transactions, total_quantity=total_quantity, unique_products=unique_products, page=page, total_pages=total_pages, per_page=per_page, monthly_sales_chart=json.dumps(monthly_chart, cls=PlotlyJSONEncoder), product_sales_chart=json.dumps(product_chart, cls=PlotlyJSONEncoder), region_sales_chart=json.dumps(region_chart, cls=PlotlyJSONEncoder), quantity_sales_chart=json.dumps(quantity_chart, cls=PlotlyJSONEncoder))
+
+@home.route("/products")
+@cache.cached(timeout=300, key_prefix=lambda: f"products_{session.get('user_id', 'anonymous')}_{request.args.get('page', '1')}_{request.args.get('search', '').strip()}")
+def products():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    user_id = session["user_id"]
+    search = request.args.get("search", "").strip()
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = 30
+
+    query = Product.query.filter(Product.user_id == user_id)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(db.or_(Product.product_name.ilike(search_term), cast(Product.product_id, String).ilike(search_term)))
+
+    total_products = query.count()
+    total_pages = max(1, (total_products + per_page - 1) // per_page)
+    page = min(page, total_pages)
+
+    products_list = query.order_by(Product.product_name.asc(), Product.product_id.asc()).offset((page - 1) * per_page).limit(per_page).all()
+
+    start_record = (page - 1) * per_page + 1 if total_products else 0
+    end_record = min(page * per_page, total_products)
+
+    return render_template("product.html", products=products_list, total_products=total_products, search=search, page=page, total_pages=total_pages, start_record=start_record, end_record=end_record)

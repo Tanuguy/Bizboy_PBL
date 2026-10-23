@@ -1,5 +1,5 @@
 from app import main_create
-from app import db
+from app import db,cache
 from app.models import User
 app=main_create()
 with app.app_context():

@@ -15,33 +15,161 @@
             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY">
             <span>BIZBOY</span>
         </a>
+
         <nav class="dashboard-nav">
-            <a href="{{ url_for('home.dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('home.profile') }}">Profile</a>
+            <div class="nav-dropdown">
+                <a href="{{ url_for('home.dashboard') }}" class="nav-dropdown-trigger" aria-haspopup="true">
+
+                    <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+                        <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+                        <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+                        <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+                    </svg>
+
+                    <span>Dashboard</span>
+
+                    <svg class="dropdown-chevron custom-arrow" width="8" height="8" viewBox="0 0 24 24"
+                        fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+                        stroke-linecap="round" aria-hidden="true" style="margin-left: auto;">
+                        <path d="M19 4L5 12l14 8z" />
+                    </svg>
+                </a>
+
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('home.sales_page') }}">
+                        <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
+                        <span>Sales</span>
+                    </a>
+
+                    <a href="{{ url_for('home.products') }}">
+                        <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z">
+                            </path>
+                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                        </svg>
+                        <span>Products</span>
+                    </a>
+
+                    <a href="#">
+                        <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                            </path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                        <span>Production(Inactive)</span>
+                    </a>
+
+                    <a href="#">
+                        <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>Expenses(Inactive)</span>
+                    </a>
+
+                    <a href="#">
+                        <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                            <polyline points="17 6 23 6 23 12"></polyline>
+                        </svg>
+                        <span>Predictions(Inactive)</span>
+                    </a>
+
+                    <a href="#">
+                        <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        <span>Analysis(Inactive)</span>
+                    </a>
+                </div>
+            </div>
+
+            <a href="{{ url_for('home.profile') }}">
+                <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Profile</span>
+            </a>
         </nav>
-        <button class="mobile-menu" onclick="toggleDashboardMenu()">☰</button>
-    </header>
-    <main class="dashboard-container">
+
+        <button class="mobile-menu" type="button" aria-label="Toggle navigation menu" aria-expanded="false"
+            onclick="toggleDashboardMenu(this)">☰</button>
+        </header>
+
+    <main class="main-container">
+    <div class="flash-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="flash-container">
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="status">
+            <span class="alert-icon">
+                {% if category == "success" %} ✓
+                {% elif category in ["danger", "error"] %}!
+                {% elif category == "warning" %}⚠
+                {% else %}i
+                {% endif %}
+            </span>
+            <span>{{ message }}</span>
         </div>
-        {% endif %}
+        {% endfor %}
         {% endwith %}
+    </div>
+
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        document.querySelectorAll(".flash-container .alert").forEach(alert => {
+            setTimeout(() => {
+                alert.classList.add("hide");
+
+                alert.addEventListener("animationend", () => {
+                    alert.remove();
+
+                    const container = document.querySelector(".flash-container");
+                    if (container && !container.querySelector(".alert")) {
+                        container.remove();
+                    }
+                }, { once: true });
+            }, 5000);
+        });
+
+        const flashContainer = document.querySelector(".flash-container");
+
+        if (flashContainer && !flashContainer.querySelector(".alert")) {
+            flashContainer.remove();
+        }
+    </script>
     <footer class="dashboard-footer">
         <span>BIZBOY</span>
         <span>© 2026</span>
         <span>By Tensor Flare</span>
     </footer>
     <script>
-        function toggleDashboardMenu() {
-            document.querySelector(".dashboard-nav").classList.toggle("mobile-open");
+        function toggleDashboardMenu(button) {
+            const nav = document.querySelector(".dashboard-nav");
+            const isOpen = nav.classList.toggle("mobile-open");
+            button.setAttribute("aria-expanded", isOpen);
         }
     </script>
 </body>
+
 </html>

@@ -1,0 +1,169 @@
+{% extends "userbase.html" %}
+{% block title %}Products | BIZBOY{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/product.css') }}">
+
+<section class="products-page">
+    <div class="products-heading">
+        <div>
+            <span class="products-kicker">BUSINESS MANAGEMENT</span>
+            <h1>Products Overview</h1>
+            <p>Manage your product inventory and review recorded products.</p>
+        </div>
+        <a href="{{ url_for('home.input_data') }}" class="products-import-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round"/>
+            </svg>
+            Update Data
+        </a>
+    </div>
+
+    <div class="products-stats">
+        <div class="products-stat-card">
+            <div class="products-stat-top">
+                <span>Total Products</span>
+                <span class="products-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="m12 3 9 5-9 5-9-5 9-5Z" stroke="currentColor"
+                            stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="m3 12 9 5 9-5M3 16l9 5 9-5" stroke="currentColor"
+                            stroke-width="1.7" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_products) }}</h2>
+            <p>Products in your inventory</p>
+        </div>
+    </div>
+
+    <div class="products-table-card">
+        <div class="products-table-header">
+            <div>
+                <h2>Product Inventory</h2>
+                <p>View, search, and remove recorded products.</p>
+            </div>
+
+            <form class="products-search" method="GET"
+                  action="{{ url_for('home.products') }}">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor"
+                        stroke-width="1.8"/>
+                    <path d="m16 16 4 4" stroke="currentColor"
+                        stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <input type="search" name="q" value="{{ search }}"
+                       placeholder="Search products..." aria-label="Search products">
+                {% if search %}
+                <a href="{{ url_for('home.products') }}"
+                   class="products-clear-search" aria-label="Clear search">×</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="products-table-scroll">
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Product ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>
+                            <div class="products-product">
+                                <span class="products-product-mark">
+                                    {{ (product.product_name or 'P')[0]|upper }}
+                                </span>
+                                <span>{{ product.product_name or 'Unnamed Product' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="products-id">
+                                #{{ product.product_id }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3">
+                            <div class="products-empty">
+                                <div class="products-empty-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="m12 3 9 5-9 5-9-5 9-5Z"
+                                            stroke="currentColor" stroke-width="1.5"
+                                            stroke-linejoin="round"/>
+                                        <path d="m3 12 9 5 9-5M3 16l9 5 9-5"
+                                            stroke="currentColor" stroke-width="1.5"
+                                            stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <h3>
+                                    {% if search %}
+                                        No matching products
+                                    {% else %}
+                                        No products recorded yet
+                                    {% endif %}
+                                </h3>
+                                <p>
+                                    {% if search %}
+                                        Try searching with a different product name or ID.
+                                    {% else %}
+                                        Import your business dataset to display products here.
+                                    {% endif %}
+                                </p>
+                                {% if search %}
+                                <a href="{{ url_for('home.products') }}">Clear search</a>
+                                {% else %}
+                                <a href="{{ url_for('home.input_data') }}">Import your first dataset</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="products-table-footer">
+            <span>
+                Showing {{ start_record }}–{{ end_record }}
+                of {{ total_products }} products
+            </span>
+            <span>Product Inventory</span>
+        </div>
+
+        {% if total_pages > 1 %}
+        <nav class="products-pagination" aria-label="Product pagination">
+            <a href="{{ url_for('home.products', page=page-1, q=search) }}"
+               class="products-page-link {% if page <= 1 %}disabled{% endif %}"
+               {% if page <= 1 %}aria-disabled="true" tabindex="-1"{% endif %}>
+                Previous
+            </a>
+
+            {% for page_num in range(1, total_pages + 1) %}
+                {% if page_num == 1 or page_num == total_pages
+                      or (page_num >= page - 2 and page_num <= page + 2) %}
+                    <a href="{{ url_for('home.products', page=page_num, q=search) }}"
+                       class="products-page-link {% if page_num == page %}active{% endif %}"
+                       {% if page_num == page %}aria-current="page"{% endif %}>
+                        {{ page_num }}
+                    </a>
+                {% elif page_num == page - 3 or page_num == page + 3 %}
+                    <span class="products-pagination-dots">…</span>
+                {% endif %}
+            {% endfor %}
+
+            <a href="{{ url_for('home.products', page=page+1, q=search) }}"
+               class="products-page-link {% if page >= total_pages %}disabled{% endif %}"
+               {% if page >= total_pages %}aria-disabled="true" tabindex="-1"{% endif %}>
+                Next
+            </a>
+        </nav>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
