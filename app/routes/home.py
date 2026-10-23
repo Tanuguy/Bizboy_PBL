@@ -552,36 +552,26 @@ def input_data():
 
     try:
         datasets = []
-
         for file in files:
             if not file.filename:
                 continue
-
             extension = file.filename.rsplit(".", 1)[-1].lower()
-
             if extension not in allowed:
                 flash(f"{file.filename} is not supported.", "danger")
                 return redirect(url_for("home.input_data"))
-
             datasets.extend(read_file(file))
-
         datasets.sort(key=lambda item: 0 if "products" in item[0].lower() else 1)
-
         for source, df in datasets:
             result = process_data(df, user_id, source, product_code_map)
-
             for key in total:
                 total[key] += result[key]
-
         create_analysis(user_id)
         db.session.commit()
         cache.delete(f"dashboard_{user_id}")
-
         for page_number in range(1, 1001):
             cache.delete(f"sales_{user_id}_{page_number}")
         flash(f"Import completed successfully! {total['rows']:,} rows processed. "f"{total['products']:,} products, {total['sales']:,} sales, "f"{total['production']:,} production records, "f"{total['expenses']:,} expenses and "f"{total['customers']:,} customer records were stored.","success")
         return redirect(url_for("home.dashboard"))
-
     except Exception as error:
         db.session.rollback()
         print("IMPORT ERROR:", error)
