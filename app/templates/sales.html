@@ -1,0 +1,245 @@
+{% extends "userbase.html" %}
+{% block title %}Sales | BIZBOY{% endblock %}
+{% block content %}
+<section class="sales-page">
+    <div class="sales-heading">
+        <div>
+            <span class="sales-kicker">BUSINESS MANAGEMENT</span>
+            <h1>Sales Overview</h1>
+            <p>Track your revenue, product sales, and transactions.</p>
+        </div>
+        <a href="{{ url_for('home.input_data') }}" class="sales-import-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Update Data
+        </a>
+    </div>
+    <div class="sales-stats">
+        <div class="sales-stat-card">
+            <div class="sales-stat-top">
+                <span>Total Revenue</span>
+                <span class="sales-stat-icon revenue-icon">₹</span>
+            </div>
+            <h2>₹{{ "{:,.2f}".format(total_sales) }}</h2>
+            <p>Revenue from recorded sales</p>
+        </div>
+        <div class="sales-stat-card">
+            <div class="sales-stat-top">
+                <span>Transactions</span>
+                <span class="sales-stat-icon transaction-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor"
+                            stroke-width="1.7" stroke-linejoin="round" />
+                        <path d="M14 3v5h5M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_transactions) }}</h2>
+            <p>Total recorded sales entries</p>
+        </div>
+        <div class="sales-stat-card">
+            <div class="sales-stat-top">
+                <span>Units Sold</span>
+                <span class="sales-stat-icon quantity-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="m12 3 9 5-9 5-9-5 9-5Z" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                        <path d="m3 12 9 5 9-5M3 16l9 5 9-5" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_quantity) }}</h2>
+            <p>Total quantity sold</p>
+        </div>
+
+        <div class="sales-stat-card">
+            <div class="sales-stat-top">
+                <span>Products Sold</span>
+                <span class="sales-stat-icon product-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                        <path d="m4.5 7.7 7.5 4.4 7.5-4.4M12 12v8.5" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(unique_products) }}</h2>
+            <p>Distinct products with sales</p>
+        </div>
+    </div>
+    <!--Graphs-->
+    <div class="sales-charts-grid">
+        <div class="sales-chart-card">
+            <h3>Monthly Sales</h3>
+            <div id="monthlySalesChart"></div>
+        </div>
+
+        <div class="sales-chart-card">
+            <h3>Top Products by Sales</h3>
+            <div id="productSalesChart"></div>
+        </div>
+
+        <div class="sales-chart-card">
+            <h3>Sales by Region</h3>
+            <div id="regionSalesChart"></div>
+        </div>
+
+        <div class="sales-chart-card">
+            <h3>Quantity Sold Over Time</h3>
+            <div id="quantitySalesChart"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script>
+        const chartConfig = { responsive: true, displayModeBar: false };
+
+        Plotly.newPlot("monthlySalesChart", {{ monthly_sales_chart | safe }}.data, {{ monthly_sales_chart | safe }}.layout, chartConfig);
+        Plotly.newPlot("productSalesChart", {{ product_sales_chart | safe }}.data, {{ product_sales_chart | safe }}.layout, chartConfig);
+        Plotly.newPlot("regionSalesChart", {{ region_sales_chart | safe }}.data, {{ region_sales_chart | safe }}.layout, chartConfig);
+        Plotly.newPlot("quantitySalesChart", {{ quantity_sales_chart | safe }}.data, {{ quantity_sales_chart | safe }}.layout, chartConfig);
+    </script>
+
+    <div class="sales-table-card">
+        <div class="sales-table-header">
+            <div>
+                <h2>Sales Transactions</h2>
+                <p>Review your recorded sales details.</p>
+            </div>
+
+            <form class="sales-search" method="GET" action="{{ url_for('home.sales_page') }}">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8" />
+                    <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+
+                <input type="search" name="q" value="{{ search }}" placeholder="Search sales..."
+                    aria-label="Search sales transactions">
+                {% if search %}
+                <a href="{{ url_for('home.sales_page') }}" class="sales-clear-search" aria-label="Clear search">×</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="sales-table-scroll">
+            <table class="sales-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Region</th>
+                        <th>Quantity</th>
+                        <th>Sales Amount</th>
+                        <th>Transaction Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale, product in sales_records %}
+                    <tr>
+                        <td>
+                            <div class="sales-product">
+                                <span class="sales-product-mark">
+                                    {{ (product.product_name if product and product.product_name else 'U')[0]|upper }}
+                                </span>
+                                <span>
+                                    {{ product.product_name if product else 'Unknown Product' }}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sales-region">
+                                {{ sale.region_area or 'Not specified' }}
+                            </span>
+                        </td>
+                        <td>{{ "{:,}".format(sale.quantity or 0) }}</td>
+                        <td class="sales-amount">
+                            ₹{{ "{:,.2f}".format(sale.amount_of_sales or 0) }}
+                        </td>
+                        <td>
+                            {% if sale.time_period %}
+                            {{ sale.time_period.strftime('%d %b %Y') }}
+                            {% else %}
+                            <span class="sales-muted">No date</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="sales-empty">
+                                <div class="sales-empty-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.5" />
+                                        <path d="M8 9h8M8 13h8M8 17h4" stroke="currentColor" stroke-width="1.5"
+                                            stroke-linecap="round" />
+                                    </svg>
+                                </div>
+                                <h3>
+                                    {% if search %}
+                                    No matching sales records
+                                    {% else %}
+                                    No sales records yet
+                                    {% endif %}
+                                </h3>
+                                <p>
+                                    {% if search %}
+                                    Try another product name, region, amount, or date.
+                                    {% else %}
+                                    Import your business data to see your sales here.
+                                    {% endif %}
+                                </p>
+                                {% if search %}
+                                <a href="{{ url_for('home.sales_page') }}">
+                                    Clear search
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('home.input_data') }}">
+                                    Import your first dataset
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="sales-table-footer">
+            <span>
+                Showing {{ start_record }}–{{ end_record }}
+                of {{ total_transactions }} records
+            </span>
+            <span>All amounts in INR (₹)</span>
+        </div>
+        {% if total_pages > 1 %}
+        <nav class="sales-pagination" aria-label="Sales pagination">
+            <a href="{{ url_for('home.sales_page', page=page-1) }}"
+                class="page-link {% if page == 1 %}disabled{% endif %}" {% if page==1 %}aria-disabled="true"
+                tabindex="-1" {% endif %}>
+                Previous
+            </a>
+            {% for page_num in range(1, total_pages + 1) %}
+            {% if page_num == 1 or page_num == total_pages or (page_num >= page - 2 and page_num <= page + 2) %} <a
+                href="{{ url_for('home.sales_page', page=page_num) }}"
+                class="page-link {% if page_num == page %}active{% endif %}" {% if page_num==page %}aria-current="page"
+                {% endif %}>
+                {{ page_num }}
+                </a>
+                {% elif page_num == page - 3 or page_num == page + 3 %}
+                <span class="pagination-dots">…</span>
+                {% endif %}
+                {% endfor %}
+                <a href="{{ url_for('home.sales_page', page=page+1) }}"
+                    class="page-link {% if page == total_pages %}disabled{% endif %}" {% if page==total_pages
+                    %}aria-disabled="true" tabindex="-1" {% endif %}>
+                    Next
+                </a>
+        </nav>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

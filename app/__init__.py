@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_caching import Cache
 import pymysql
 from dotenv import load_dotenv
 import os
@@ -8,6 +9,7 @@ from supabase import create_client
 load_dotenv()
 #pymysql.install_as_MySQLdb()
 db = SQLAlchemy()
+cache=Cache()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
@@ -36,8 +38,12 @@ def main_create():
         "pool_size": 5,
         "max_overflow": 2
     }
+    app.config["CACHE_TYPE"] = "SimpleCache"
+    app.config["CACHE_DEFAULT_TIMEOUT"] = 300
+    app.config["CACHE_THRESHOLD"] = 500
 
     db.init_app(app)
+    cache.init_app(app)
 
     from app.routes.auth import auth
     app.register_blueprint(auth)
