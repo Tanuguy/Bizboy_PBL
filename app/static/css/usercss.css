@@ -2513,3 +2513,90 @@ textarea:focus-visible {
         padding: 0 9px;
     }
 }
+
+/*Loading Animation*/
+
+#page-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 23, 37, 0.48);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+#page-loader.loader-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loader-bars {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    height: 100px;
+}
+
+.loader-bar {
+    display: block;
+    width: 10px;
+    height: 28px;
+    border-radius: 20px;
+    transform-origin: center;
+    animation: bar-wave 0.85s ease-in-out infinite alternate;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.08);
+}
+
+.bar-1 {
+    background: #e4654b;
+    animation-delay: 0s;
+}
+
+.bar-2 {
+    background: #f39f5a;
+    animation-delay: 0.12s;
+}
+
+.bar-3 {
+    background: #e7c569;
+    animation-delay: 0.24s;
+}
+
+.bar-4 {
+    background: #2c9d8a;
+    animation-delay: 0.36s;
+}
+
+.bar-5 {
+    background: #38bdf8;
+    animation-delay: 0.48s;
+}
+
+@keyframes bar-wave {
+    from {
+        height: 24px;
+        transform: scaleY(0.8);
+        opacity: 0.65;
+    }
+
+    to {
+        height: 78px;
+        transform: scaleY(1);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loader-bar {
+        animation: none;
+        height: 40px;
+    }
+}

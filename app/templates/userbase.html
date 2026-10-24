@@ -10,6 +10,75 @@
 </head>
 
 <body>
+<div id="page-loader" class="loader-hidden" aria-hidden="true">
+    <div class="loader-bars">
+        <span class="loader-bar bar-1"></span>
+        <span class="loader-bar bar-2"></span>
+        <span class="loader-bar bar-3"></span>
+        <span class="loader-bar bar-4"></span>
+        <span class="loader-bar bar-5"></span>
+    </div>
+</div>
+
+
+<script>
+(() => {
+    const loader = document.getElementById("page-loader");
+    if (!loader) return;
+
+    let navigating = false;
+
+    const showLoader = () => {
+        navigating = true;
+        loader.classList.remove("loader-hidden");
+    };
+
+    const hideLoader = () => {
+        navigating = false;
+        loader.classList.add("loader-hidden");
+    };
+
+    // Hide loader when the page is ready or restored from browser history
+    window.addEventListener("pageshow", hideLoader);
+    window.addEventListener("load", hideLoader);
+
+    // Start immediately when a normal internal link is clicked
+    document.addEventListener("click", event => {
+        const link = event.target.closest("a[href]");
+        if (!link || event.defaultPrevented || event.button !== 0 ||
+            event.ctrlKey || event.shiftKey || event.altKey || event.metaKey ||
+            link.target === "_blank" || link.hasAttribute("download")) return;
+
+        const url = new URL(link.href, location.href);
+
+        if (url.origin !== location.origin ||
+            (url.pathname === location.pathname &&
+             url.search === location.search &&
+             (!url.hash || url.hash === location.hash))) return;
+
+        showLoader();
+    }, true);
+
+    // Start immediately on standard form submission
+    document.addEventListener("submit", event => {
+        if (!event.defaultPrevented &&
+            !event.target.matches('[target="_blank"]')) {
+            showLoader();
+        }
+    }, true);
+
+    // Also cover navigation initiated by the browser
+    window.addEventListener("beforeunload", showLoader);
+
+    // Prevent the loader getting stuck if navigation is cancelled
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && !navigating) {
+            hideLoader();
+        }
+    });
+})();
+</script>
+
     <header class="dashboard-header">
         <a href="{{ url_for('home.dashboard') }}" class="dashboard-brand">
             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BIZBOY">
@@ -169,7 +238,7 @@
             const isOpen = nav.classList.toggle("mobile-open");
             button.setAttribute("aria-expanded", isOpen);
         }
-    </script>
+</script>
 </body>
 
 </html>
