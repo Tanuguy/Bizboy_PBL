@@ -1091,51 +1091,190 @@ textarea:focus-visible {
     color: #a5b4fc;
 }
 
+
 .processing-overlay {
     position: fixed;
     inset: 0;
-    z-index: 9999;
-    display: none;
+    z-index: 99999;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
-    background: rgba(5, 10, 18, 0.85);
+    background: rgba(7, 15, 27, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .processing-overlay.show {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
 }
 
 .processing-card {
     width: 100%;
-    max-width: 430px;
-    padding: 30px;
-    text-align: center;
-    background: #111b29;
+    max-width: 360px;
+    padding: 30px 26px 24px;
     border: 1px solid #29374a;
-    border-radius: 7px;
+    border-radius: 18px;
+    background: #101c2c;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    text-align: center;
 }
 
-.loader {
-    width: 35px;
-    height: 35px;
-    margin: 0 auto 18px;
-    border: 3px solid #29374a;
-    border-top-color: #5d6ff2;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+.data-loader {
+    height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 22px;
 }
+
+.sheet-icon {
+    position: relative;
+    width: 54px;
+    height: 66px;
+    padding: 17px 9px 9px;
+    border: 1px solid #35a878;
+    border-radius: 7px;
+    background: rgba(16, 185, 129, 0.10);
+    box-shadow: 0 0 22px rgba(16, 185, 129, 0.08);
+    animation: sheet-float 1.8s ease-in-out infinite;
+}
+
+.sheet-fold {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    background: #101c2c;
+    border-left: 1px solid #35a878;
+    border-bottom: 1px solid #35a878;
+    border-radius: 0 0 0 4px;
+}
+
+.sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    height: 100%;
+}
+
+.sheet-grid span {
+    border-radius: 2px;
+    background: #34d399;
+    opacity: 0.8;
+    animation: cell-pulse 1.2s ease-in-out infinite;
+}
+
+.sheet-grid span:nth-child(2) { animation-delay: 0.1s; }
+.sheet-grid span:nth-child(3) { animation-delay: 0.2s; }
+.sheet-grid span:nth-child(4) { animation-delay: 0.3s; }
+.sheet-grid span:nth-child(5) { animation-delay: 0.4s; }
+.sheet-grid span:nth-child(6) { animation-delay: 0.5s; }
+
+.data-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    width: 55px;
+}
+
+.data-lines span {
+    display: block;
+    height: 5px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #34d399 0%, #34d399 40%, #29374a 40%);
+    background-size: 200% 100%;
+    animation: data-flow 1.4s linear infinite;
+}
+
+.data-lines span:nth-child(2) { animation-delay: 0.2s; }
+.data-lines span:nth-child(3) { animation-delay: 0.4s; }
 
 .processing-card h2 {
-    color: #e5ebf2;
+    margin: 0 0 9px;
+    color: #f1f5f9;
     font-size: 19px;
-    font-weight: 500;
+    font-weight: 700;
 }
 
 .processing-card p {
-    margin: 8px 0 20px;
-    color: #8492a5;
-    font-size: 11px;
+    min-height: 20px;
+    margin: 0 0 24px;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.progress-track {
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #263548;
+}
+
+.progress-bar {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #10b981, #6ee7b7);
+    transition: width 0.15s ease;
+}
+
+.processing-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+#processingPercent {
+    color: #6ee7b7;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+@keyframes sheet-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes cell-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+}
+
+@keyframes data-flow {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+@media (max-width: 480px) {
+    .processing-card {
+        max-width: 320px;
+        padding: 26px 20px 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet-icon,
+    .sheet-grid span,
+    .data-lines span {
+        animation: none;
+    }
+
+    .progress-bar {
+        transition: none;
+    }
 }
 
 .progress-track {

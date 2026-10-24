@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from plotly.utils import PlotlyJSONEncoder
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
 from sqlalchemy import func,cast,String
-from app import db,cache
+from app import db#,cache
 from app.models import User, Product, Sales, Production, Expenses, CustomerData, Prediction, Analysis
 from datetime import datetime
 from zoneinfo import ZoneInfo
