@@ -425,8 +425,8 @@ def homepg():
     if "user_id" in session:
         return redirect(url_for("home.dashboard"))
     return render_template("index.html")
+
 @home.route("/dashboard")
-@cache.cached(timeout=300, key_prefix=lambda: f"dashboard_{session.get('user_id', 'anonymous')}")
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("home.homepg"))
@@ -592,7 +592,7 @@ def profile():
     return render_template("profile.html", user=user)
 
 @home.route("/sales")
-@cache.cached(timeout=3000, key_prefix=lambda: f"sales_{session.get('user_id', 'anonymous')}_{request.args.get('page', '1')}")
+#@cache.cached(timeout=300, key_prefix=lambda: f"sales_{session.get('user_id', 'anonymous')}_{request.args.get('page', '1')}")
 def sales_page():
     if "user_id" not in session:
         return redirect(url_for("home.homepg"))
@@ -663,7 +663,7 @@ def sales_page():
     return render_template("sales.html", user=user, sales_records=sales_records, total_sales=total_sales, total_transactions=total_transactions, total_quantity=total_quantity, unique_products=unique_products, page=page, total_pages=total_pages, per_page=per_page, monthly_sales_chart=json.dumps(monthly_chart, cls=PlotlyJSONEncoder), product_sales_chart=json.dumps(product_chart, cls=PlotlyJSONEncoder), region_sales_chart=json.dumps(region_chart, cls=PlotlyJSONEncoder), quantity_sales_chart=json.dumps(quantity_chart, cls=PlotlyJSONEncoder))
 
 @home.route("/products")
-@cache.cached(timeout=300, key_prefix=lambda: f"products_{session.get('user_id', 'anonymous')}_{request.args.get('page', '1')}_{request.args.get('search', '').strip()}")
+#@cache.cached(timeout=300, key_prefix=lambda: f"products_{session.get('user_id', 'anonymous')}_{request.args.get('page', '1')}_{request.args.get('search', '').strip()}")
 def products():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
