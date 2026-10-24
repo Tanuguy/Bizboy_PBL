@@ -10,6 +10,7 @@
 </head>
 
 <body>
+{% if request.endpoint != 'home.input_data' %}
 <div id="page-loader" class="loader-hidden" aria-hidden="true">
     <div class="loader-bars">
         <span class="loader-bar bar-1"></span>
@@ -19,6 +20,7 @@
         <span class="loader-bar bar-5"></span>
     </div>
 </div>
+{%endif%}
 
 
 <script>

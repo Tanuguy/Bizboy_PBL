@@ -43,7 +43,22 @@
 
 <div id="processingOverlay" class="processing-overlay">
     <div class="processing-card">
-        <div class="loader"></div>
+        <div class="data-loader">
+            <div class="sheet-icon">
+                <div class="sheet-fold"></div>
+                <div class="sheet-grid">
+                    <span></span><span></span>
+                    <span></span><span></span>
+                    <span></span><span></span>
+                </div>
+            </div>
+            <div class="data-lines">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
         <h2>Processing Your Data</h2>
         <p id="processingStatus">Preparing your files...</p>
 
@@ -51,9 +66,13 @@
             <div id="processingProgressBar" class="progress-bar"></div>
         </div>
 
-        <div class="processing-percent" id="processingPercent">0%</div>
+        <div class="processing-footer">
+            <span>Importing data</span>
+            <span id="processingPercent">0%</span>
+        </div>
     </div>
 </div>
+
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
