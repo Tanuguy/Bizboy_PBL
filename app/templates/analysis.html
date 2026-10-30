@@ -1,0 +1,184 @@
+{% extends "userbase.html" %}
+{% block title %}Business Analytics | BIZBOY{% endblock %}
+{% block content %}
+<section class="analytics-page">
+    <div class="analytics-heading">
+        <div>
+            <span class="analytics-kicker">BUSINESS INTELLIGENCE</span>
+            <h1>Business Analytics</h1>
+            <p>Understand your business performance, future trends and important alerts.</p>
+        </div>
+        <a href="{{ url_for('home.input_data') }}" class="analytics-import-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Update Data
+        </a>
+    </div>
+    <div class="analytics-stats">
+        <div class="analytics-stat-card">
+            <div class="analytics-stat-top">
+                <span>Total Business Sales</span>
+                <span class="analytics-stat-icon sales-stat-icon">₹</span>
+            </div>
+            <h2>₹{{ "{:,.2f}".format(total_sales) }}</h2>
+            <p>Total recorded revenue</p>
+        </div>
+        <div class="analytics-stat-card">
+            <div class="analytics-stat-top">
+                <span>Units Sold</span>
+                <span class="analytics-stat-icon quantity-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="m12 3 9 5-9 5-9-5 9-5Z" stroke="currentColor" stroke-width="1.7" />
+                        <path d="m3 12 9 5 9-5M3 16l9 5 9-5" stroke="currentColor" stroke-width="1.7" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_quantity) }}</h2>
+            <p>Total quantity sold</p>
+        </div>
+        <div class="analytics-stat-card">
+            <div class="analytics-stat-top">
+                <span>Business Insights</span>
+                <span class="analytics-stat-icon insight-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3 14.8 8.2 21 9.1l-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.1l6.2-.9L12 3Z"
+                            stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_analysis) }}</h2>
+            <p>Generated business insights</p>
+        </div>
+
+        <div class="analytics-stat-card">
+            <div class="analytics-stat-top">
+                <span>Next 1 month Forecast</span>
+                <span class="analytics-stat-icon forecast-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="m3 17 6-6 4 3 8-9M15 5h6v6" stroke="currentColor" stroke-width="1.8"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </span>
+            </div>
+            {% if forecast_available %}
+            <h2>₹{{ "{:,.2f}".format(forecast_total) }}</h2>
+            <p>Estimated sales for the next 1 month</p>
+            {% else %}
+            <h2>--</h2>
+            <p>Insufficient historical sales data</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="analytics-chart-card">
+        <div class="analytics-card-heading">
+            <div>
+                <span class="analytics-section-label">PREDICTIVE ANALYTICS</span>
+                <h2>Future Sales Forecast</h2>
+                <p>Historical sales compared with estimated sales for the next 1 month.</p>
+            </div>
+            <span class="analytics-period">1 MONTH FORECAST</span>
+        </div>
+
+        {% if forecast_available %}
+        <div class="forecast-summary">
+            <div>
+                <span>Estimated daily average</span>
+                <strong>₹{{ "{:,.2f}".format(forecast_average) }}</strong>
+            </div>
+            <div>
+                <span>Estimated 1-month revenue</span>
+                <strong>₹{{ "{:,.2f}".format(forecast_total) }}</strong>
+            </div>
+        </div>
+        {% endif %}
+        <div id="futureSalesChart" style="width: 100%;height: 400px;"></div>
+    </div>
+    <div class="analytics-alert-section">
+        <div class="analytics-alert-heading">
+            <div>
+                <span class="analytics-section-label">BUSINESS MONITORING</span>
+                <h2>Business Alerts & Insights</h2>
+                <p>Important findings generated from your business records.</p>
+            </div>
+            <span class="analytics-alert-count">
+                {{ total_analysis }} INSIGHTS
+            </span>
+        </div>
+
+        {% if analysis %}
+        <div class="analytics-alert-grid">
+            {% for item in analysis %}
+            {% set name = (item.ana_name or "")|lower %}
+            <article class="analytics-alert-card">
+                <div class="analytics-alert-top">
+                    <span class="analytics-alert-icon
+                        {% if 'declining' in name or 'unusual' in name or 'volatility' in name %}
+                            alert-warning
+                        {% elif 'growing' in name or 'forecast' in name or 'leading' in name %}
+                            alert-positive
+                        {% else %}
+                            alert-neutral
+                        {% endif %}">
+                        {% if 'declining' in name or 'unusual' in name or 'volatility' in name %}
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M12 3 22 20H2L12 3Z" stroke="currentColor" stroke-width="1.7"
+                                stroke-linejoin="round" />
+                            <path d="M12 9v5m0 3v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                        </svg>
+                        {% elif 'growing' in name or 'forecast' in name or 'leading' in name %}
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="m3 17 6-6 4 3 8-9M15 5h6v6" stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        {% else %}
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M12 3 14.8 8.2 21 9.1l-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.1l6.2-.9L12 3Z"
+                                stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                        </svg>
+                        {% endif %}
+                    </span>
+                    <span class="analytics-alert-type">
+                        {{ item.analysis_type or "Business Insight" }}
+                    </span>
+                </div>
+                <h3>{{ item.ana_name }}</h3>
+                <p>{{ item.description }}</p>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="analytics-empty">
+            <div class="analytics-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.6" />
+                    <path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                </svg>
+            </div>
+            <h3>No business insights available</h3>
+            <p>Import your business data to generate analytics and alerts.</p>
+            <a href="{{ url_for('home.input_data') }}">Import Business Data</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+    const forecastData = {{ forecast_chart | safe }};
+    const forecastConfig = {
+        responsive: true,
+        displayModeBar: false
+    };
+
+    Plotly.newPlot(
+        "futureSalesChart",
+        forecastData.data,
+        forecastData.layout,
+        {
+            responsive:true,
+            displayModeBar:false
+        }
+    );
+</script>
+{% endblock %}

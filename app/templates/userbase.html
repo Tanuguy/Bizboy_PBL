@@ -40,11 +40,8 @@
         loader.classList.add("loader-hidden");
     };
 
-    // Hide loader when the page is ready or restored from browser history
     window.addEventListener("pageshow", hideLoader);
     window.addEventListener("load", hideLoader);
-
-    // Start immediately when a normal internal link is clicked
     document.addEventListener("click", event => {
         const link = event.target.closest("a[href]");
         if (!link || event.defaultPrevented || event.button !== 0 ||
@@ -61,7 +58,6 @@
         showLoader();
     }, true);
 
-    // Start immediately on standard form submission
     document.addEventListener("submit", event => {
         if (!event.defaultPrevented &&
             !event.target.matches('[target="_blank"]')) {
@@ -69,10 +65,7 @@
         }
     }, true);
 
-    // Also cover navigation initiated by the browser
     window.addEventListener("beforeunload", showLoader);
-
-    // Prevent the loader getting stuck if navigation is cancelled
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && !navigating) {
             hideLoader();
@@ -151,23 +144,23 @@
                         <span>Expenses(Inactive)</span>
                     </a>
 
-                    <a href="#">
+                  <!--  <a href="#">
                         <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
                             <polyline points="17 6 23 6 23 12"></polyline>
                         </svg>
                         <span>Predictions(Inactive)</span>
-                    </a>
+                    </a>--->
 
-                    <a href="#">
+                    <a href="{{ url_for('home.analysis') }}">
                         <svg class="menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="20" x2="18" y2="10"></line>
                             <line x1="12" y1="20" x2="12" y2="4"></line>
                             <line x1="6" y1="20" x2="6" y2="14"></line>
                         </svg>
-                        <span>Analysis(Inactive)</span>
+                        <span>Analysis and Predictions</span>
                     </a>
                 </div>
             </div>
