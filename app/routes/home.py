@@ -3,7 +3,8 @@ import re
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import mean_absolute_error
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_absolute_error,r2_score,mean_squared_error
 import numpy as np
 import random
 import plotly.graph_objects as go
@@ -14,6 +15,7 @@ from app import db#,cache
 from app.models import User, Product, Sales, Production, Expenses, CustomerData, Prediction, Analysis
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import inspect
 
 home = Blueprint("home", __name__)
 
@@ -51,29 +53,37 @@ def process_data(df, user_id, source, product_code_map):
     result = {"rows": 0, "products": 0, "sales": 0, "production": 0, "expenses": 0, "customers": 0}
     if df is None or df.empty:
         return result
-
-    df = df.dropna(axis=0, how="all")
-    df = df.dropna(axis=1, how="all")
+    df = df.dropna(axis=0, how="all").dropna(axis=1, how="all")
     if df.empty:
         return result
-
     result["rows"] = len(df)
     columns = {}
-
     for column in df.columns:
-        name = str(column).strip().lower()
-        name = re.sub(r"[^a-z0-9]+", "_", name)
-        name = re.sub(r"_+", "_", name).strip("_")
+        name = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", str(column).strip().lower())).strip("_")
         columns[name] = column
-
     def find(names):
         for name in names:
-            name = re.sub(r"[^a-z0-9]+", "_", name.lower())
-            name = re.sub(r"_+", "_", name).strip("_")
+            name = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", name.lower())).strip("_")
             if name in columns:
                 return columns[name]
         return None
-
+    def number(value):
+        if pd.isna(value):
+            return None
+        try:
+            return float(str(value).replace(",", "").replace("₹", "").replace("$", "").strip())
+        except (ValueError, TypeError):
+            return None
+    def date_value(value):
+        if pd.isna(value):
+            return None
+        try:
+            value = pd.to_datetime(value, errors="coerce")
+            return None if pd.isna(value) else value.to_pydatetime()
+        except (ValueError, TypeError):
+            return None
+    def normalized_number(value):
+        return None if value is None else round(float(value), 6)
     product_col = find(["product_name", "productname", "product", "item", "item_name", "product_title"])
     product_id_col = find(["product_id", "productid", "product_code", "sku", "sku_id"])
     category_col = find(["category", "product_category", "subcategory", "product_type"])
@@ -86,7 +96,6 @@ def process_data(df, user_id, source, product_code_map):
     expense_category_col = find(["expense_category", "exp_category", "expense_type"])
     expense_col = find(["expense_amount", "total_expense", "cost_amount", "expense", "amount"])
     customer_col = find(["customer", "customer_name", "customer_id", "cust_id", "client", "client_name"])
-
     source_name = source.lower()
 
     products = Product.query.filter_by(user_id=user_id).all()
@@ -94,110 +103,48 @@ def process_data(df, user_id, source, product_code_map):
     production = Production.query.filter_by(user_id=user_id).all()
     expenses = Expenses.query.filter_by(user_id=user_id).all()
     customers = CustomerData.query.filter_by(user_id=user_id).all()
+    product_map = {str(p.product_name).strip().lower(): p for p in products if p.product_name}
+    sales_keys = {
+        (s.product_id, s.region_area or "", s.time_period, s.quantity, normalized_number(s.amount_of_sales))
+        for s in sales
+    }
 
-    product_map = {str(product.product_name).strip().lower(): product for product in products if product.product_name}
-    sales_map = {(sale.product_id, sale.region_area or "", sale.time_period): sale for sale in sales}
-    production_map = {(item.product_id, item.time_period): item for item in production}
-    expense_map = {(expense.exp_category or "", expense.time_period): expense for expense in expenses}
-    customer_map = {(customer.product_id, customer.sales_id, customer.time): customer for customer in customers}
+    production_keys = {
+        (p.product_id, p.time_period, p.quantity, normalized_number(p.price))
+        for p in production
+    }
 
-    new_products = []
+    expense_keys = {
+        (e.exp_category or "", e.time_period, normalized_number(e.price))
+        for e in expenses
+    }
+
+    customer_keys = {
+        (c.product_id, c.sales_id, c.time, c.quantity)
+        for c in customers
+    }
+
     new_sales = []
     new_production = []
     new_expenses = []
     new_customers = []
 
     for row in df.to_dict("records"):
-        product_name = None
-        product_code = None
-        category = None
-        price = None
-        quantity = None
-        production_quantity = None
-        sales_amount = None
-        expense_amount = None
-        date = None
-        region = None
-        expense_category = "Other"
+        product_name = str(row.get(product_col)).strip() if product_col and pd.notna(row.get(product_col)) else None
+        product_code = str(row.get(product_id_col)).strip() if product_id_col and pd.notna(row.get(product_id_col)) else None
+        category = str(row.get(category_col)).strip() if category_col and pd.notna(row.get(category_col)) else None
+        price = number(row.get(price_col)) if price_col else None
+        quantity_value = number(row.get(quantity_col)) if quantity_col else None
+        quantity = int(quantity_value) if quantity_value is not None and quantity_value.is_integer() else quantity_value
+        production_value = number(row.get(production_col)) if production_col else None
+        production_quantity = int(production_value) if production_value is not None and production_value.is_integer() else production_value
+        sales_amount = number(row.get(sales_col)) if sales_col else None
+        expense_amount = number(row.get(expense_col)) if expense_col else None
+        date = date_value(row.get(date_col)) if date_col else None
+        region = str(row.get(region_col)).strip() if region_col and pd.notna(row.get(region_col)) else None
+        expense_category = str(row.get(expense_category_col)).strip() if expense_category_col and pd.notna(row.get(expense_category_col)) else "Other"
 
-        if product_col:
-            value = row.get(product_col)
-            if pd.notna(value):
-                product_name = str(value).strip()
-
-        if product_id_col:
-            value = row.get(product_id_col)
-            if pd.notna(value):
-                product_code = str(value).strip()
-
-        if category_col:
-            value = row.get(category_col)
-            if pd.notna(value):
-                category = str(value).strip()
-
-        if price_col:
-            value = row.get(price_col)
-            if pd.notna(value):
-                try:
-                    price = float(str(value).replace(",", "").replace("₹", "").replace("$", ""))
-                except:
-                    price = None
-
-        if quantity_col:
-            value = row.get(quantity_col)
-            if pd.notna(value):
-                try:
-                    quantity = int(float(value))
-                except:
-                    quantity = None
-
-        if production_col:
-            value = row.get(production_col)
-            if pd.notna(value):
-                try:
-                    production_quantity = int(float(value))
-                except:
-                    production_quantity = None
-
-        if date_col:
-            value = row.get(date_col)
-            if pd.notna(value):
-                try:
-                    date = pd.to_datetime(value, errors="coerce")
-                    date = None if pd.isna(date) else date.to_pydatetime()
-                except:
-                    date = None
-
-        if region_col:
-            value = row.get(region_col)
-            if pd.notna(value):
-                region = str(value).strip()
-
-        if sales_col:
-            value = row.get(sales_col)
-            if pd.notna(value):
-                try:
-                    sales_amount = float(str(value).replace(",", "").replace("₹", "").replace("$", ""))
-                except:
-                    sales_amount = None
-
-        if expense_col:
-            value = row.get(expense_col)
-            if pd.notna(value):
-                try:
-                    expense_amount = float(str(value).replace(",", "").replace("₹", "").replace("$", ""))
-                except:
-                    expense_amount = None
-
-        if expense_category_col:
-            value = row.get(expense_category_col)
-            if pd.notna(value):
-                expense_category = str(value).strip()
-
-        product = None
-
-        if product_name:
-            product = product_map.get(product_name.lower())
+        product = product_map.get(product_name.lower()) if product_name else None
 
         if not product and product_code:
             product = product_code_map.get(product_code)
@@ -207,203 +154,263 @@ def process_data(df, user_id, source, product_code_map):
             product = product_map.get(key)
 
             if product:
-                if category:
+                if category is not None:
                     product.category = category
                 if price is not None:
                     product.price = price
             else:
                 product = Product(user_id=user_id, product_name=product_name, category=category, price=price)
-                new_products.append(product)
+                db.session.add(product)
+                db.session.flush()
                 product_map[key] = product
+                result["products"] += 1
 
             if product_code:
                 product_code_map[product_code] = product
-
-            result["products"] += 1
 
         if not product and product_name:
             product = product_map.get(product_name.lower())
 
         if product and ("sales" in source_name or sales_amount is not None):
             if sales_amount is not None or quantity is not None:
-                key = (product.product_id, region or "", date)
-                sale = sales_map.get(key)
+                key = (product.product_id, region or "", date, quantity, normalized_number(sales_amount))
 
-                if sale:
-                    if quantity is not None:
-                        sale.quantity = quantity
-                    if sales_amount is not None:
-                        sale.amount_of_sales = sales_amount
-                else:
-                    sale = Sales(user_id=user_id, product_id=product.product_id, region_area=region, quantity=quantity, amount_of_sales=sales_amount, time_period=date)
-                    new_sales.append(sale)
-                    if product.product_id:
-                        sales_map[key] = sale
-
-                result["sales"] += 1
+                if key not in sales_keys:
+                    new_sales.append(Sales(user_id=user_id, product_id=product.product_id, region_area=region, quantity=quantity, amount_of_sales=sales_amount, time_period=date))
+                    sales_keys.add(key)
+                    result["sales"] += 1
 
         if product and ("production" in source_name or production_quantity is not None):
             if production_quantity is not None:
-                key = (product.product_id, date)
-                production_record = production_map.get(key)
+                key = (product.product_id, date, production_quantity, normalized_number(price))
 
-                if production_record:
-                    production_record.quantity = production_quantity
-                    if price is not None:
-                        production_record.price = price
-                else:
-                    production_record = Production(user_id=user_id, product_id=product.product_id, quantity=production_quantity, price=price, time_period=date)
-                    new_production.append(production_record)
-                    production_map[key] = production_record
-
-                result["production"] += 1
+                if key not in production_keys:
+                    new_production.append(Production(user_id=user_id, product_id=product.product_id, quantity=production_quantity, price=price, time_period=date))
+                    production_keys.add(key)
+                    result["production"] += 1
 
         if expense_amount is not None:
-            key = (expense_category, date)
-            expense = expense_map.get(key)
+            key = (expense_category, date, normalized_number(expense_amount))
 
-            if expense:
-                expense.price = expense_amount
-            else:
-                expense = Expenses(user_id=user_id, exp_category=expense_category, price=expense_amount, time_period=date)
-                new_expenses.append(expense)
-                expense_map[key] = expense
-
-            result["expenses"] += 1
+            if key not in expense_keys:
+                new_expenses.append(Expenses(user_id=user_id, exp_category=expense_category, price=expense_amount, time_period=date))
+                expense_keys.add(key)
+                result["expenses"] += 1
 
         if "customers" in source_name and product:
-            customer_key = (product.product_id, None, date)
-            customer_record = customer_map.get(customer_key)
+            key = (product.product_id, None, date, quantity)
 
-            if customer_record:
-                customer_record.quantity = quantity
-                customer_record.time = date
-            else:
-                customer_record = CustomerData(user_id=user_id, product_id=product.product_id, sales_id=None, quantity=quantity, time=date)
-                new_customers.append(customer_record)
-                customer_map[customer_key] = customer_record
-
-            result["customers"] += 1
-
-    if new_products:
-        db.session.add_all(new_products)
-        db.session.flush()
-        for product in new_products:
-            product_map[str(product.product_name).strip().lower()] = product
-
+            if key not in customer_keys:
+                new_customers.append(CustomerData(user_id=user_id, product_id=product.product_id, sales_id=None, quantity=quantity, time=date))
+                customer_keys.add(key)
+                result["customers"] += 1
     if new_sales:
         db.session.add_all(new_sales)
-
     if new_production:
         db.session.add_all(new_production)
-
     if new_expenses:
         db.session.add_all(new_expenses)
-
     if new_customers:
         db.session.add_all(new_customers)
-
     db.session.flush()
     return result
 
-
 def create_analysis(user_id):
     Analysis.query.filter_by(user_id=user_id, analysis_type="Automated Summary").delete(synchronize_session=False)
-
     analyses = []
     add_analysis = lambda name, description: analyses.append(Analysis(user_id=user_id, ana_name=name, description=description, analysis_type="Automated Summary"))
-
-    products = Product.query.filter_by(user_id=user_id).all()
-    sales_records = Sales.query.filter_by(user_id=user_id).all()
-    production_records = Production.query.filter_by(user_id=user_id).all()
-    customer_records = CustomerData.query.filter_by(user_id=user_id).count()
+    total_products = Product.query.filter_by(user_id=user_id).count()
+    total_sales_records = Sales.query.filter_by(user_id=user_id).count()
+    total_production = Production.query.filter_by(user_id=user_id).count()
+    total_customers = CustomerData.query.filter_by(user_id=user_id).count()
     total_sales = float(db.session.query(func.coalesce(func.sum(Sales.amount_of_sales), 0)).filter(Sales.user_id == user_id).scalar() or 0)
     total_expenses = float(db.session.query(func.coalesce(func.sum(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0)
     net_amount = total_sales - total_expenses
+    add_analysis("Business Data Insights", f"Your business contains {total_products} products, {total_sales_records} sales records, {total_production} production records and {total_customers} customer records. Total recorded sales are ₹{total_sales:,.2f}, expenses are ₹{total_expenses:,.2f}, and sales minus recorded expenses are ₹{net_amount:,.2f}.")
 
-    add_analysis("Business Data Insights", f"Analysis of {len(products)} products, {len(sales_records)} sales records, {len(production_records)} production records and {customer_records} customer records found total sales of ₹{total_sales:,.2f} and recorded expenses of ₹{total_expenses:,.2f}.")
+    average_sale = db.session.query(func.avg(Sales.amount_of_sales)).filter(Sales.user_id == user_id).scalar()
+    if average_sale is not None:
+        add_analysis("Average Sales Value", f"The average recorded transaction value is ₹{float(average_sale):,.2f} across {total_sales_records} sales records.")
 
-    if sales_records:
-        sales_df = pd.DataFrame([{"date": row.date_of_sales, "amount": float(row.amount_of_sales or 0), "product_id": row.product_id} for row in sales_records])
-        sales_df["date"] = pd.to_datetime(sales_df["date"], errors="coerce")
-        sales_df["amount"] = pd.to_numeric(sales_df["amount"], errors="coerce")
-        sales_df = sales_df.dropna(subset=["amount"])
+    daily_rows = db.session.query(func.date(Sales.time_period).label("day"),func.sum(Sales.amount_of_sales).label("sales"),func.sum(Sales.quantity).label("quantity")).filter(Sales.user_id == user_id,Sales.time_period.isnot(None)).group_by(func.date(Sales.time_period)).order_by(func.date(Sales.time_period)).all()
+    daily_sales = pd.DataFrame(daily_rows, columns=["date", "sales", "quantity"])
 
-        if not sales_df.empty:
-            average_sale = float(sales_df["amount"].mean())
-            add_analysis("Average Sales Value", f"The average recorded sales value is ₹{average_sale:,.2f} across {len(sales_df)} valid sales records.")
+    if not daily_sales.empty:
+        daily_sales["date"] = pd.to_datetime(daily_sales["date"], errors="coerce")
+        daily_sales["sales"] = pd.to_numeric(daily_sales["sales"], errors="coerce").fillna(0)
+        daily_sales["quantity"] = pd.to_numeric(daily_sales["quantity"], errors="coerce").fillna(0)
+        daily_sales = daily_sales.dropna(subset=["date"]).set_index("date").sort_index()
 
-            if total_sales > 0 and total_expenses > 0:
-                expense_ratio = total_expenses / total_sales * 100
-                add_analysis("Expense Ratio Insight", f"Recorded expenses represent {expense_ratio:.2f}% of recorded sales. Sales minus recorded expenses equals ₹{net_amount:,.2f}; this is not necessarily accounting profit.")
+        daily_sales = daily_sales.resample("D").sum()
 
-            valid_dates = sales_df.dropna(subset=["date"])
-            if not valid_dates.empty:
-                daily_sales = valid_dates.groupby(valid_dates["date"].dt.normalize())["amount"].sum().sort_index()
+        if len(daily_sales) >= 2:
+            first_value = float(daily_sales["sales"].iloc[0])
+            last_value = float(daily_sales["sales"].iloc[-1])
+            change = last_value - first_value
+            trend = "increased" if change > 0 else "decreased" if change < 0 else "remained unchanged"
+            add_analysis("Historical Sales Change", f"Recorded daily sales changed from ₹{first_value:,.2f} to ₹{last_value:,.2f} between {daily_sales.index[0].date()} and {daily_sales.index[-1].date()}. Sales {trend} by ₹{abs(change):,.2f}.")
 
-                if len(daily_sales) >= 2:
-                    first_value = float(daily_sales.iloc[0])
-                    last_value = float(daily_sales.iloc[-1])
-                    change = last_value - first_value
-                    trend = "increased" if change > 0 else "decreased" if change < 0 else "remained unchanged"
-                    add_analysis("Historical Sales Change", f"Sales changed from ₹{first_value:,.2f} on {daily_sales.index[0].date()} to ₹{last_value:,.2f} on {daily_sales.index[-1].date()}; the recorded value {trend} by ₹{abs(change):,.2f}. This compares the first and last recorded sales days, not equivalent periods.")
+        if len(daily_sales) >= 5:
+            mean_sales = float(daily_sales["sales"].mean())
+            variation = float(daily_sales["sales"].std(ddof=0))
+            cv = variation / mean_sales * 100 if mean_sales > 0 else 0
+            level = "high" if cv > 50 else "moderate" if cv > 20 else "low"
+            add_analysis("Sales Volatility", f"Daily sales have a coefficient of variation of {cv:.2f}%, indicating {level} variation relative to their average.")
 
-                if len(daily_sales) >= 5:
-                    x = np.arange(len(daily_sales)).reshape(-1, 1)
-                    y = daily_sales.to_numpy(dtype=float)
-                    model = LinearRegression().fit(x, y)
-                    next_index = np.array([[len(daily_sales)]])
-                    prediction = max(0.0, float(model.predict(next_index)[0]))
-                    trend = "upward" if model.coef_[0] > 0 else "downward" if model.coef_[0] < 0 else "flat"
-                    add_analysis("ML Sales Forecast", f"Linear regression estimates sales for the next observed sales interval at approximately ₹{prediction:,.2f}. The fitted historical trend is {trend}. This is a baseline estimate, not a guarantee.")
+        if len(daily_sales) >= 10:
+            values = daily_sales["sales"].to_numpy().reshape(-1, 1)
+            detector = IsolationForest(contamination="auto", random_state=42)
+            detector.fit(values)
+            unusual = daily_sales.loc[detector.predict(values) == -1, "sales"]
 
-                    variation = float(daily_sales.std(ddof=0))
-                    mean_sales = float(daily_sales.mean())
-                    if mean_sales > 0:
-                        cv = variation / mean_sales * 100
-                        level = "high" if cv > 50 else "moderate" if cv > 20 else "low"
-                        add_analysis("Sales Volatility", f"Daily sales have a coefficient of variation of {cv:.2f}%, indicating {level} variation relative to their mean.")
+            if not unusual.empty:
+                unusual_text = ", ".join(f"{date.date()}: ₹{amount:,.2f}" for date, amount in unusual.sort_values().tail(5).items())
+                add_analysis("Unusual Sales Detection", f"Isolation Forest identified unusual daily sales values: {unusual_text}. Review these records for exceptional orders, promotions, or possible data errors.")
 
-                if len(daily_sales) >= 10:
-                    detector = IsolationForest(contamination="auto", random_state=42).fit(daily_sales.to_numpy().reshape(-1, 1))
-                    unusual = daily_sales[detector.predict(daily_sales.to_numpy().reshape(-1, 1)) == -1]
-                    if not unusual.empty:
-                        unusual_text = ", ".join(f"{date.date()}: ₹{amount:,.2f}" for date, amount in unusual.sort_values().tail(3).items())
-                        add_analysis("Unusual Sales Detection", f"Isolation Forest flagged these daily sales values as unusual: {unusual_text}. Review them for promotions, exceptional orders, or data errors.")
+        def make_features(series):
+            frame = pd.DataFrame({"sales": series})
+            frame["lag_1"] = frame["sales"].shift(1)
+            frame["lag_2"] = frame["sales"].shift(2)
+            frame["lag_3"] = frame["sales"].shift(3)
+            frame["lag_7"] = frame["sales"].shift(7)
+            frame["rolling_7"] = frame["sales"].shift(1).rolling(7).mean()
+            frame["day_of_week"] = frame.index.dayofweek
+            frame["month"] = frame.index.month
+            frame["trend"] = np.arange(len(frame))
+            return frame.dropna()
 
-            product_sales = sales_df.dropna(subset=["product_id"]).groupby("product_id")["amount"].sum().sort_values(ascending=False)
-            product_lookup = {product.product_id: product.product_name for product in products}
+        if len(daily_sales) >= 30:
+            series = daily_sales["sales"].astype(float)
+            features = make_features(series)
 
-            if not product_sales.empty:
-                best_id = product_sales.index[0]
-                best_value = float(product_sales.iloc[0])
-                best_name = product_lookup.get(best_id, f"Product {best_id}")
-                add_analysis("Leading Product", f"{best_name} has the highest recorded sales value at ₹{best_value:,.2f}.")
+            X = features.drop(columns=["sales"])
+            y = features["sales"]
 
-                if total_sales > 0:
-                    share = best_value / total_sales * 100
-                    add_analysis("Product Revenue Concentration", f"The leading product represents approximately {share:.2f}% of total recorded sales. A high share may indicate reliance on one product.")
+            split = int(len(features) * 0.8)
+            X_train, X_test = X.iloc[:split], X.iloc[split:]
+            y_train, y_test = y.iloc[:split], y.iloc[split:]
 
-                if len(product_sales) >= 2:
-                    second_id = product_sales.index[1]
-                    second_name = product_lookup.get(second_id, f"Product {second_id}")
-                    second_value = float(product_sales.iloc[1])
-                    add_analysis("Product Sales Comparison", f"{best_name} recorded ₹{best_value:,.2f} in sales compared with ₹{second_value:,.2f} for {second_name}, a difference of ₹{best_value - second_value:,.2f}.")
+            models = {
+                "Linear Regression": LinearRegression(),
+                "XGBoost": XGBRegressor(n_estimators=150,max_depth=3,learning_rate=0.05,subsample=0.8,colsample_bytree=0.8,objective="reg:squarederror",random_state=42,n_jobs=-1)
+            }
+            model_results = {}
+            fitted_models = {}
+            print("\n========== BIZBOY SALES MODEL EVALUATION ==========")
+            for model_name, model in models.items():
+                try:
+                    model.fit(X_train, y_train)
+                    predictions = np.maximum(0, model.predict(X_test))
+                    mae = mean_absolute_error(y_test, predictions)
+                    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+                    r2 = r2_score(y_test, predictions) if len(y_test) >= 2 else float("nan")
+                    model_results[model_name] = {"MAE": mae, "RMSE": rmse, "R2": r2}
+                    fitted_models[model_name] = model
+                    print(f"\n{model_name}")
+                    print(f"MAE: ₹{mae:,.2f}")
+                    print(f"RMSE: ₹{rmse:,.2f}")
+                    print(f"R² Score: {r2:.4f}")
+                    add_analysis(f"{model_name} Evaluation", f"Chronological test evaluation: MAE ₹{mae:,.2f}, RMSE ₹{rmse:,.2f}, R² {r2:.4f}. These are test-set metrics, not training accuracy.")
+                except Exception as model_error:
+                    print(f"{model_name} failed: {model_error}")
+            print("\n===================================================\n")
 
-    if len(analyses) < 10 and total_sales > 0:
-        add_analysis("Sales and Expense Outlook", f"Recorded sales exceed expenses by ₹{net_amount:,.2f}." if net_amount >= 0 else f"Recorded expenses exceed sales by ₹{abs(net_amount):,.2f}. Review costs and revenue before drawing conclusions about profitability.")
+            if fitted_models:
+                best_name = min(model_results, key=lambda name: model_results[name]["MAE"])
+                best_model = fitted_models[best_name]
+                add_analysis("Best Forecasting Model", f"{best_name} achieved the lowest test MAE of ₹{model_results[best_name]['MAE']:,.2f} among the successfully evaluated models. Model selection is based on historical test performance.")
+                future_series = series.copy()
+                future_predictions = []
+                for step in range(7):
+                    next_date = future_series.index[-1] + pd.Timedelta(days=1)
+                    next_features = pd.DataFrame([{
+                        "lag_1": future_series.iloc[-1],
+                        "lag_2": future_series.iloc[-2],
+                        "lag_3": future_series.iloc[-3],
+                        "lag_7": future_series.iloc[-7],
+                        "rolling_7": future_series.iloc[-7:].mean(),
+                        "day_of_week": next_date.dayofweek,
+                        "month": next_date.month,
+                        "trend": len(future_series)
+                    }], index=[next_date])
+                    prediction = max(0.0, float(best_model.predict(next_features)[0]))
+                    future_predictions.append((next_date, prediction))
+                    future_series.loc[next_date] = prediction
+                forecast_total = sum(value for date, value in future_predictions)
+                forecast_average = forecast_total / 7
+                forecast_text = ", ".join(f"{date.strftime('%d %b')}: ₹{value:,.2f}" for date, value in future_predictions)
+                add_analysis("Next 7 Days Sales Forecast", f"{best_name} forecasts total sales of approximately ₹{forecast_total:,.2f} over the next 7 calendar days, averaging ₹{forecast_average:,.2f} per day. Daily estimates: {forecast_text}. These are model estimates, not guaranteed revenue.")
+                previous_week = float(series.tail(7).sum())
+                if previous_week > 0:
+                    forecast_change = (forecast_total - previous_week) / previous_week * 100
+                    direction = "increase" if forecast_change > 0 else "decrease" if forecast_change < 0 else "no change"
+                    add_analysis("Forecasted Sales Trend", f"The next 7-day forecast indicates a possible {abs(forecast_change):.2f}% {direction} compared with the previous 7 recorded calendar days.")
 
-    if len(analyses) < 10 and products:
-        add_analysis("Product Portfolio Insight", f"There are {len(products)} products in the current portfolio. Compare product-level sales and costs to identify which products deserve more attention.")
+        else:
+            add_analysis("Sales Forecast Data Requirement", f"There are {len(daily_sales)} daily observations. At least 30 calendar days are required by this forecasting setup before comparing Linear Regression and XGBoost reliably. More history may improve evaluation.")
+    product_rows = db.session.query(Sales.product_id,Product.product_name,func.date(Sales.time_period).label("day"),func.sum(Sales.quantity).label("quantity"),func.sum(Sales.amount_of_sales).label("revenue")).join(Product,(Sales.product_id == Product.product_id) &
+    (Product.user_id == user_id)).filter(Sales.user_id == user_id,Sales.time_period.isnot(None)).group_by(Sales.product_id,Product.product_name,func.date(Sales.time_period)).order_by(Sales.product_id,func.date(Sales.time_period)).all()
+    product_df = pd.DataFrame(product_rows, columns=["product_id", "product_name", "date", "quantity", "revenue"])
 
-    if len(analyses) < 10 and production_records:
-        add_analysis("Production Data Coverage", f"The database contains {len(production_records)} production records. Production efficiency requires compatible production quantities, sales quantities, and time periods.")
+    if not product_df.empty:
+        product_df["date"] = pd.to_datetime(product_df["date"], errors="coerce")
+        product_df["quantity"] = pd.to_numeric(product_df["quantity"], errors="coerce").fillna(0)
+        product_df["revenue"] = pd.to_numeric(product_df["revenue"], errors="coerce").fillna(0)
+        product_df = product_df.dropna(subset=["date"])
+        latest_date = product_df["date"].max().normalize()
+        recent_start = latest_date - pd.Timedelta(days=6)
+        previous_start = latest_date - pd.Timedelta(days=13)
+        product_insights = []
+        for product_id, group in product_df.groupby("product_id"):
+            recent = float(group.loc[group["date"] >= recent_start, "quantity"].sum())
+            previous = float(group.loc[(group["date"] >= previous_start) & (group["date"] < recent_start), "quantity"].sum())
+            if recent == 0 and previous == 0:
+                continue
+            if previous > 0:
+                growth = (recent - previous) / previous * 100
+                direction = "growing" if growth > 0 else "declining" if growth < 0 else "stable"
+            elif recent > 0:
+                growth = None
+                direction = "new or recently active"
+            else:
+                growth = -100
+                direction = "no recent demand"
+            product_name = str(group["product_name"].iloc[0] or f"Product {product_id}")
+            product_insights.append({
+                "name": product_name,
+                "recent": recent,
+                "previous": previous,
+                "growth": growth,
+                "direction": direction,
+                "revenue": float(group["revenue"].sum())
+            })
+        growing = sorted([p for p in product_insights if p["growth"] is not None and p["growth"] > 0], key=lambda p: p["growth"], reverse=True)
+        declining = sorted([p for p in product_insights if p["growth"] is not None and p["growth"] < 0], key=lambda p: p["growth"])
+        for item in growing[:5]:
+            add_analysis("Growing Product Demand", f"{item['name']} sold {item['recent']:,.0f} units in the latest 7 calendar days compared with {item['previous']:,.0f} in the previous 7 days. Recorded quantity demand increased by {item['growth']:.2f}%. Consider checking stock availability.")
+        for item in declining[:5]:
+            add_analysis("Declining Product Demand", f"{item['name']} sold {item['recent']:,.0f} units in the latest 7 calendar days compared with {item['previous']:,.0f} in the previous 7 days. Recorded quantity demand declined by {abs(item['growth']):.2f}%. Review pricing, availability, and customer interest.")
+        if not growing and not declining:
+            add_analysis("Product Demand Trends", "No clear growing or declining product demand was identified from the available 7-day comparisons.")
+        top_product = max(product_insights, key=lambda p: p["revenue"], default=None)
 
-    if len(analyses) < 10 and customer_records:
-        add_analysis("Customer Data Coverage", f"The database contains {customer_records} customer records. Customer purchasing patterns require sales records linked to customer identifiers.")
+        if top_product:
+            add_analysis("Leading Product", f"{top_product['name']} has the highest recorded product revenue among the analyzed products, approximately ₹{top_product['revenue']:,.2f}.")
+    if total_sales > 0:
+        if net_amount >= 0:
+            add_analysis("Sales and Expense Outlook", f"Recorded sales exceed recorded expenses by ₹{net_amount:,.2f}. This is a basic difference, not necessarily accounting profit.")
+        else:
+            add_analysis("Sales and Expense Outlook", f"Recorded expenses exceed recorded sales by ₹{abs(net_amount):,.2f}. Review business costs and revenue.")
+    if total_production:
+        add_analysis("Production Data Coverage", f"The database contains {total_production} production records. Compare production quantities with sales demand to identify potential inventory gaps.")
 
-    db.session.add_all(analyses[:10])
+    if total_customers:
+        add_analysis("Customer Data Coverage", f"The database contains {total_customers} customer records. Linking customer IDs with sales can enable customer segmentation and purchasing-pattern analysis.")
+
+    db.session.add_all(analyses[:25])
     db.session.commit()
+    
+    print(f"BIZBOY: Generated {min(len(analyses), 25)} automated business insights.")
 
 def apply_dark(fig):
     fig.update_layout(
@@ -448,7 +455,8 @@ def dashboard():
     total_expenses = float(db.session.query(func.coalesce(func.sum(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0)
     total_quantity = int(db.session.query(func.coalesce(func.sum(Sales.quantity), 0)).filter(Sales.user_id == user_id).scalar() or 0)
 
-    analysis = Analysis.query.filter_by(user_id=user_id).order_by(Analysis.ana_id.desc()).limit(10).all()
+    create_analysis(user_id)
+    analysis = Analysis.query.filter_by(user_id=user_id).order_by(Analysis.ana_id.desc()).all()
     products = Product.query.filter_by(user_id=user_id).order_by(Product.product_name.asc()).limit(10).all()
 
     monthly_sales_rows = db.session.query(func.date_trunc("month", Sales.time_period).label("month"), func.sum(Sales.amount_of_sales).label("total")).filter(Sales.user_id == user_id, Sales.time_period.isnot(None)).group_by(func.date_trunc("month", Sales.time_period)).order_by(func.date_trunc("month", Sales.time_period)).all()
@@ -567,9 +575,6 @@ def input_data():
                 total[key] += result[key]
         create_analysis(user_id)
         db.session.commit()
-        cache.delete(f"dashboard_{user_id}")
-        for page_number in range(1, 1001):
-            cache.delete(f"sales_{user_id}_{page_number}")
         flash(f"Import completed successfully! {total['rows']:,} rows processed. "f"{total['products']:,} products, {total['sales']:,} sales, "f"{total['production']:,} production records, "f"{total['expenses']:,} expenses and "f"{total['customers']:,} customer records were stored.","success")
         return redirect(url_for("home.dashboard"))
     except Exception as error:
@@ -605,7 +610,7 @@ def sales_page():
         return redirect(url_for("home.homepg"))
 
     page = max(request.args.get("page", 1, type=int), 1)
-    per_page = 15
+    per_page = 50
 
     sales_query = db.session.query(Sales, Product).outerjoin(Product, (Sales.product_id == Product.product_id) & (Product.user_id == user_id)).filter(Sales.user_id == user_id)
     total_transactions = sales_query.count()
@@ -689,3 +694,101 @@ def products():
     end_record = min(page * per_page, total_products)
 
     return render_template("product.html", products=products_list, total_products=total_products, search=search, page=page, total_pages=total_pages, start_record=start_record, end_record=end_record)
+
+
+
+@home.route("/analysis")
+def analysis():
+    if "user_id" not in session:
+        return redirect(url_for("home.homepg"))
+
+    user_id = session["user_id"]
+    user = db.session.get(User, user_id)
+
+    if not user:
+        session.pop("user_id", None)
+        return redirect(url_for("home.homepg"))
+
+    try:
+        create_analysis(user_id)
+    except Exception as error:
+        db.session.rollback()
+        print("ANALYSIS UPDATE ERROR:", error)
+
+    analysis = Analysis.query.filter_by(user_id=user_id, analysis_type="Automated Summary").order_by(Analysis.ana_id.desc()).all()
+
+    total_sales = float(db.session.query(func.coalesce(func.sum(Sales.amount_of_sales), 0)).filter(Sales.user_id == user_id).scalar() or 0)
+    total_quantity = int(db.session.query(func.coalesce(func.sum(Sales.quantity), 0)).filter(Sales.user_id == user_id).scalar() or 0)
+
+    daily_rows = db.session.query(func.date(Sales.time_period).label("day"), func.sum(Sales.amount_of_sales).label("sales")).filter(Sales.user_id == user_id, Sales.time_period.isnot(None)).group_by(func.date(Sales.time_period)).order_by(func.date(Sales.time_period)).all()
+
+    forecast_chart = go.Figure()
+    forecast_available = False
+    forecast_total = 0
+    forecast_average = 0
+
+    if daily_rows:
+        daily_df = pd.DataFrame(daily_rows, columns=["date", "sales"])
+        daily_df["date"] = pd.to_datetime(daily_df["date"], errors="coerce")
+        daily_df["sales"] = pd.to_numeric(daily_df["sales"], errors="coerce").fillna(0)
+        daily_df = daily_df.dropna(subset=["date"]).set_index("date").sort_index().resample("D").sum()
+
+        if len(daily_df) >= 2:
+            recent_sales = daily_df.tail(30)
+
+            X = np.arange(len(recent_sales)).reshape(-1, 1)
+            y = recent_sales["sales"].to_numpy(dtype=float)
+
+            model = LinearRegression().fit(X, y)
+
+            future_dates = pd.date_range(start=recent_sales.index[-1] + pd.Timedelta(days=1), end=recent_sales.index[-1] + pd.DateOffset(months=1), freq="D")
+            future_X = np.arange(len(recent_sales), len(recent_sales) + len(future_dates)).reshape(-1, 1)
+            predictions = np.maximum(0, model.predict(future_X))
+
+            forecast_total = float(predictions.sum())
+            forecast_average = float(predictions.mean())
+            forecast_available = True
+
+            forecast_chart.add_trace(go.Bar(
+                x=recent_sales.index,
+                y=recent_sales["sales"],
+                name="Historical Sales",
+                marker_color="#7181ef",
+                hovertemplate="%{x|%d %b %Y}<br>Actual Sales: ₹%{y:,.2f}<extra></extra>"
+            ))
+
+            forecast_chart.add_trace(go.Bar(
+                x=future_dates,
+                y=predictions,
+                name="Predicted Sales",
+                marker_color="#10b981",
+                hovertemplate="%{x|%d %b %Y}<br>Predicted Sales: ₹%{y:,.2f}<extra></extra>"
+            ))
+
+    if not forecast_available:
+        forecast_chart.add_annotation(text="At least 2 dated sales observations are required for a forecast", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(color="#94a3b8", size=13))
+
+    forecast_chart.update_layout(
+        barmode="group",
+        xaxis=dict(title="Date", type="date", tickformat="%d %b"),
+        yaxis=dict(title="Sales Amount (₹)", rangemode="tozero"),
+        hovermode="x unified",
+        showlegend=True,
+        legend=dict(orientation="h", y=1.12, x=0),
+        margin=dict(l=15, r=15, t=45, b=15)
+    )
+
+    forecast_chart = apply_dark(forecast_chart)
+
+    return render_template(
+        "analysis.html",
+        user=user,
+        analysis=analysis,
+        total_analysis=len(analysis),
+        total_sales=total_sales,
+        total_quantity=total_quantity,
+        forecast_total=forecast_total,
+        forecast_average=forecast_average,
+        forecast_available=forecast_available,
+        forecast_chart=json.dumps(forecast_chart, cls=PlotlyJSONEncoder)
+    )

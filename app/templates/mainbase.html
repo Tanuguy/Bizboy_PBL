@@ -38,12 +38,9 @@
         navigating = false;
         loader.classList.add("loader-hidden");
     };
-
-    // Hide loader when the page is ready or restored from browser history
     window.addEventListener("pageshow", hideLoader);
     window.addEventListener("load", hideLoader);
 
-    // Start immediately when a normal internal link is clicked
     document.addEventListener("click", event => {
         const link = event.target.closest("a[href]");
         if (!link || event.defaultPrevented || event.button !== 0 ||
@@ -60,7 +57,6 @@
         showLoader();
     }, true);
 
-    // Start immediately on standard form submission
     document.addEventListener("submit", event => {
         if (!event.defaultPrevented &&
             !event.target.matches('[target="_blank"]')) {
@@ -68,10 +64,7 @@
         }
     }, true);
 
-    // Also cover navigation initiated by the browser
     window.addEventListener("beforeunload", showLoader);
-
-    // Prevent the loader getting stuck if navigation is cancelled
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && !navigating) {
             hideLoader();
