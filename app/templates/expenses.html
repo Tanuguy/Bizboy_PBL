@@ -1,0 +1,146 @@
+{% extends "userbase.html" %}
+{% block title %}Expenses | BIZBOY{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/expenses.css') }}">
+
+<div class="expenses-container">
+    <div class="page-heading">
+        <div>
+            <h1>Expenses</h1>
+            <p>Track and analyze your business expenses.</p>
+        </div>
+    </div>
+
+    <div class="expense-stats">
+        <div class="expense-stat-card">
+            <div class="stat-icon blue"><i class="fas fa-wallet"></i></div>
+            <div>
+                <p>Total Expenses</p>
+                <h2>₹{{ "%.2f"|format(total_expenses) }}</h2>
+            </div>
+        </div>
+
+        <div class="expense-stat-card">
+            <div class="stat-icon purple"><i class="fas fa-receipt"></i></div>
+            <div>
+                <p>Total Records</p>
+                <h2>{{ total_records }}</h2>
+            </div>
+        </div>
+
+        <div class="expense-stat-card">
+            <div class="stat-icon orange"><i class="fas fa-chart-line"></i></div>
+            <div>
+                <p>Average Expense</p>
+                <h2>₹{{ "%.2f"|format(average_expense) }}</h2>
+            </div>
+        </div>
+
+        <div class="expense-stat-card">
+            <div class="stat-icon green"><i class="fas fa-layer-group"></i></div>
+            <div>
+                <p>Expense Categories</p>
+                <h2>{{ unique_categories }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="expense-charts">
+        <div class="expense-chart-card">
+            <h3>Monthly Expenses</h3>
+            <div id="monthlyExpensesChart"></div>
+        </div>
+
+        <div class="expense-chart-card">
+            <h3>Expenses by Category</h3>
+            <div id="categoryExpensesChart"></div>
+        </div>
+
+        <div class="expense-chart-card">
+            <h3>Expense Trend</h3>
+            <div id="expenseTrendChart"></div>
+        </div>
+
+        <div class="expense-chart-card">
+            <h3>Top Expense Categories</h3>
+            <div id="topCategoriesChart"></div>
+        </div>
+    </div>
+
+    <div class="expense-records">
+        <div class="records-header">
+            <div>
+                <h2>Expense Records</h2>
+                <p>View and search your recorded expenses.</p>
+            </div>
+
+            <form method="GET" action="{{ url_for('home.expenses') }}" class="expense-search">
+                <input type="text" name="q" value="{{ search }}" placeholder="Search category or amount...">
+                <button type="submit"><i class="fas fa-search"></i> Search</button>
+                {% if search %}
+                    <a href="{{ url_for('home.expenses') }}" class="clear-search">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="expense-table-wrapper">
+            <table class="expense-table">
+                <thead>
+                    <tr>
+                        <th>Sr. No.</th>
+                        <th>Expense Category</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td>{{ loop.index + (page - 1) * per_page }}</td>
+                        <td><span class="category-badge">{{ expense.exp_category or 'Uncategorized' }}</span></td>
+                        <td class="amount-cell">₹{{ "%.2f"|format(expense.price or 0) }}</td>
+                        <td>{{ expense.time_period.strftime('%d %b %Y') if expense.time_period else 'N/A' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="no-records">No expense records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-footer">
+            <span>Showing {{ expenses|length }} of {{ filtered_records }} records</span>
+
+            <div class="pagination">
+                {% if page > 1 %}
+                    <a href="{{ url_for('home.expenses', page=page-1, q=search) }}">Previous</a>
+                {% endif %}
+
+                <span>Page {{ page }} of {{ total_pages }}</span>
+
+                {% if page < total_pages %}
+                    <a href="{{ url_for('home.expenses', page=page+1, q=search) }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+    const monthlyExpenses = {{ monthly_expenses_chart | safe }};
+    const categoryExpenses = {{ category_expenses_chart | safe }};
+    const expenseTrend = {{ expense_trend_chart | safe }};
+    const topCategories = {{ top_categories_chart | safe }};
+
+    const chartConfig = {responsive: true, displayModeBar: false};
+
+    Plotly.newPlot('monthlyExpensesChart', monthlyExpenses.data, monthlyExpenses.layout, chartConfig);
+    Plotly.newPlot('categoryExpensesChart', categoryExpenses.data, categoryExpenses.layout, chartConfig);
+    Plotly.newPlot('expenseTrendChart', expenseTrend.data, expenseTrend.layout, chartConfig);
+    Plotly.newPlot('topCategoriesChart', topCategories.data, topCategories.layout, chartConfig);
+</script>
+{% endblock %}
