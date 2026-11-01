@@ -1,0 +1,262 @@
+{% extends "userbase.html" %}
+{% block title %}Production | BIZBOY{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/production.css') }}">
+<section class="production-page">
+    <div class="production-heading">
+        <div>
+            <span class="production-kicker">BUSINESS MANAGEMENT</span>
+            <h1>Production Overview</h1>
+            <p>Monitor production volume, product output, and production value.</p>
+        </div>
+        <a href="{{ url_for('home.input_data') }}" class="production-import-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Update Data
+        </a>
+    </div>
+
+    <div class="production-stats">
+        <div class="production-stat-card">
+            <div class="production-stat-top">
+                <span>Total Production Value</span>
+                <span class="production-stat-icon value-icon">₹</span>
+            </div>
+            <h2>₹{{ "{:,.2f}".format(total_production_value) }}</h2>
+            <p>Recorded quantity multiplied by price</p>
+        </div>
+
+        <div class="production-stat-card">
+            <div class="production-stat-top">
+                <span>Production Records</span>
+                <span class="production-stat-icon records-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor"
+                            stroke-width="1.7" stroke-linejoin="round" />
+                        <path d="M14 3v5h5M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_records) }}</h2>
+            <p>Total recorded production entries</p>
+        </div>
+
+        <div class="production-stat-card">
+            <div class="production-stat-top">
+                <span>Units Produced</span>
+                <span class="production-stat-icon quantity-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="m12 3 9 5-9 5-9-5 9-5Z" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                        <path d="m3 12 9 5 9-5M3 16l9 5 9-5" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(total_quantity) }}</h2>
+            <p>Total quantity manufactured</p>
+        </div>
+
+        <div class="production-stat-card">
+            <div class="production-stat-top">
+                <span>Products Produced</span>
+                <span class="production-stat-icon product-icon">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                        <path d="m4.5 7.7 7.5 4.4 7.5-4.4M12 12v8.5" stroke="currentColor" stroke-width="1.7"
+                            stroke-linejoin="round" />
+                    </svg>
+                </span>
+            </div>
+            <h2>{{ "{:,}".format(unique_products) }}</h2>
+            <p>Distinct products manufactured</p>
+        </div>
+    </div>
+
+    <div class="production-charts-grid">
+        <div class="production-chart-card">
+            <div class="production-chart-heading">
+                <h3>Monthly Production</h3>
+                <span>Units produced per month</span>
+            </div>
+            <div id="monthlyProductionChart"></div>
+        </div>
+
+        <div class="production-chart-card">
+            <div class="production-chart-heading">
+                <h3>Top Products by Production</h3>
+                <span>Highest production quantities</span>
+            </div>
+            <div id="productProductionChart"></div>
+        </div>
+
+        <div class="production-chart-card">
+            <div class="production-chart-heading">
+                <h3>Production Value Trend</h3>
+                <span>Recorded production value over time</span>
+            </div>
+            <div id="productionValueChart"></div>
+        </div>
+
+        <div class="production-chart-card">
+            <div class="production-chart-heading">
+                <h3>Product Production Distribution</h3>
+                <span>Share of total units produced</span>
+            </div>
+            <div id="productionDistributionChart"></div>
+        </div>
+    </div>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script>
+        const chartConfig = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        const monthlyProductionChart = {{ monthly_production_chart | safe }};
+        const productProductionChart = {{ product_production_chart | safe }};
+        const productionValueChart = {{ production_value_chart | safe }};
+        const productionDistributionChart = {{ production_distribution_chart | safe }};
+
+        Plotly.newPlot("monthlyProductionChart", monthlyProductionChart.data, monthlyProductionChart.layout, chartConfig);
+        Plotly.newPlot("productProductionChart", productProductionChart.data, productProductionChart.layout, chartConfig);
+        Plotly.newPlot("productionValueChart", productionValueChart.data, productionValueChart.layout, chartConfig);
+        Plotly.newPlot("productionDistributionChart", productionDistributionChart.data, productionDistributionChart.layout, chartConfig);
+    </script>
+
+    <div class="production-table-card">
+        <div class="production-table-header">
+            <div>
+                <h2>Production Records</h2>
+                <p>Review your recorded manufacturing details.</p>
+            </div>
+            <form class="production-search" method="GET" action="{{ url_for('home.production') }}">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8" />
+                    <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+                <input type="search" name="q" value="{{ search }}" placeholder="Search production..."
+                    aria-label="Search production records">
+                {% if search %}
+                <a href="{{ url_for('home.production') }}" class="production-clear-search"
+                    aria-label="Clear search">×</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="production-table-scroll">
+            <table class="production-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity Produced</th>
+                        <th>Unit Price</th>
+                        <th>Production Value</th>
+                        <th>Production Date</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for record, product in production_records %}
+                    <tr>
+                        <td>
+                            <div class="production-product">
+                                <span class="production-product-mark">
+                                    {{ (product.product_name if product and product.product_name else 'U')[0]|upper }}
+                                </span>
+                                <span>{{ product.product_name if product else 'Unknown Product' }}</span>
+                            </div>
+                        </td>
+
+                        <td>{{ "{:,}".format(record.quantity or 0) }}</td>
+
+                        <td>₹{{ "{:,.2f}".format(record.price or 0) }}</td>
+
+                        <td class="production-amount">
+                            ₹{{ "{:,.2f}".format((record.quantity or 0) * (record.price or 0)) }}
+                        </td>
+
+                        <td>
+                            {% if record.time_period %}
+                            {{ record.time_period.strftime('%d %b %Y') }}
+                            {% else %}
+                            <span class="production-muted">No date</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="production-empty">
+                                <div class="production-empty-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.5" />
+                                        <path d="M8 9h8M8 13h8M8 17h4" stroke="currentColor" stroke-width="1.5"
+                                            stroke-linecap="round" />
+                                    </svg>
+                                </div>
+
+                                <h3>
+                                    {% if search %}
+                                    No matching production records
+                                    {% else %}
+                                    No production records yet
+                                    {% endif %}
+                                </h3>
+
+                                <p>
+                                    {% if search %}
+                                    Try another product name, quantity, price, or date.
+                                    {% else %}
+                                    Import your business data to see your production here.
+                                    {% endif %}
+                                </p>
+
+                                {% if search %}
+                                <a href="{{ url_for('home.production') }}">Clear search</a>
+                                {% else %}
+                                <a href="{{ url_for('home.input_data') }}">Import your first dataset</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="production-table-footer">
+            <span>Showing {{ start_record }}–{{ end_record }} of {{ total_records }} records</span>
+            <span>All amounts in INR (₹)</span>
+        </div>
+        {% if total_pages > 1 %}
+        <nav class="production-pagination" aria-label="Production pagination">
+            <a href="{{ url_for('home.production', page=page-1, q=search) }}"
+                class="production-page-link {% if page == 1 %}disabled{% endif %}" {% if page==1 %}aria-disabled="true"
+                tabindex="-1" {% endif %}>
+                Previous
+            </a>
+            {% for page_num in range(1, total_pages + 1) %}
+            {% if page_num == 1 or page_num == total_pages or (page_num >= page - 2 and page_num <= page + 2) %} <a
+                href="{{ url_for('home.production', page=page_num, q=search) }}"
+                class="production-page-link {% if page_num == page %}active{% endif %}" {% if page_num==page
+                %}aria-current="page" {% endif %}>
+                {{ page_num }}
+                </a>
+                {% elif page_num == page - 3 or page_num == page + 3 %}
+                <span class="production-pagination-dots">…</span>
+                {% endif %}
+                {% endfor %}
+                <a href="{{ url_for('home.production', page=page+1, q=search) }}"
+                    class="production-page-link {% if page == total_pages %}disabled{% endif %}" {% if page==total_pages
+                    %}aria-disabled="true" tabindex="-1" {% endif %}>
+                    Next
+                </a>
+        </nav>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

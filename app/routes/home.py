@@ -10,7 +10,7 @@ import random
 import plotly.graph_objects as go
 from plotly.utils import PlotlyJSONEncoder
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
-from sqlalchemy import func,cast,String
+from sqlalchemy import func,cast,String,or_
 from app import db#,cache
 from app.models import User, Product, Sales, Production, Expenses, CustomerData, Prediction, Analysis
 from datetime import datetime
@@ -792,3 +792,141 @@ def analysis():
         forecast_available=forecast_available,
         forecast_chart=json.dumps(forecast_chart, cls=PlotlyJSONEncoder)
     )
+
+#Production
+@home.route("/production")
+def production():
+    if "user_id" not in session:
+        return redirect(url_for("home.homepg"))
+
+    user_id = session["user_id"]
+    user = db.session.get(User, user_id)
+
+    if not user:
+        session.pop("user_id", None)
+        return redirect(url_for("home.homepg"))
+
+    search = request.args.get("q", "").strip()
+    page = request.args.get("page", 1, type=int)
+    per_page = 15
+
+    base_query = db.session.query(Production, Product).outerjoin(Product, Production.product_id == Product.product_id).filter(Production.user_id == user_id)
+
+    total_records = Production.query.filter_by(user_id=user_id).count()
+    total_quantity = db.session.query(func.coalesce(func.sum(Production.quantity), 0)).filter(Production.user_id == user_id).scalar() or 0
+    total_production_value = db.session.query(func.coalesce(func.sum(Production.quantity * Production.price), 0)).filter(Production.user_id == user_id).scalar() or 0
+    unique_products = db.session.query(func.count(func.distinct(Production.product_id))).filter(Production.user_id == user_id).scalar() or 0
+
+    monthly_rows = db.session.query(func.date_trunc("month", Production.time_period).label("month"), func.coalesce(func.sum(Production.quantity), 0).label("quantity")).filter(Production.user_id == user_id, Production.time_period.isnot(None)).group_by(func.date_trunc("month", Production.time_period)).order_by(func.date_trunc("month", Production.time_period)).all()
+
+    monthly_labels = [row.month.strftime("%b %Y") for row in monthly_rows]
+    monthly_quantities = [float(row.quantity or 0) for row in monthly_rows]
+
+    monthly_production_fig = go.Figure()
+    monthly_production_fig.add_trace(go.Bar(x=monthly_labels, y=monthly_quantities, name="Units Produced", marker_color="#38BDF8", marker_line_width=0, hovertemplate="%{x}<br>Units: %{y:,.0f}<extra></extra>"))
+    monthly_production_fig.update_layout(title=None, xaxis_title=None, yaxis_title="Units Produced", showlegend=False, margin=dict(l=45, r=20, t=20, b=55))
+    apply_dark(monthly_production_fig)
+
+    product_rows = db.session.query(Product.product_name, func.coalesce(func.sum(Production.quantity), 0).label("quantity")).join(Production, Production.product_id == Product.product_id).filter(Production.user_id == user_id).group_by(Product.product_name).order_by(func.sum(Production.quantity).desc()).limit(10).all()
+
+    product_labels = [row.product_name or "Unknown Product" for row in product_rows]
+    product_quantities = [float(row.quantity or 0) for row in product_rows]
+
+    product_production_fig = go.Figure()
+    product_production_fig.add_trace(go.Bar(x=product_quantities, y=product_labels, orientation="h", marker_color="#2563EB", marker_line_width=0, hovertemplate="%{y}<br>Units: %{x:,.0f}<extra></extra>"))
+    product_production_fig.update_layout(title=None, xaxis_title="Units Produced", yaxis_title=None, showlegend=False, yaxis=dict(autorange="reversed"), margin=dict(l=110, r=25, t=20, b=45))
+    apply_dark(product_production_fig)
+
+    value_rows = db.session.query(func.date_trunc("month", Production.time_period).label("month"), func.coalesce(func.sum(Production.quantity * Production.price), 0).label("value")).filter(Production.user_id == user_id, Production.time_period.isnot(None)).group_by(func.date_trunc("month", Production.time_period)).order_by(func.date_trunc("month", Production.time_period)).all()
+
+    value_labels = [row.month.strftime("%b %Y") for row in value_rows]
+    production_values = [float(row.value or 0) for row in value_rows]
+
+    production_value_fig = go.Figure()
+    production_value_fig.add_trace(go.Scatter(x=value_labels, y=production_values, mode="lines+markers", name="Production Value", line=dict(color="#0EA5E9", width=3), marker=dict(size=7, color="#38BDF8"), fill="tozeroy", fillcolor="rgba(14, 165, 233, 0.10)", hovertemplate="%{x}<br>Value: ₹%{y:,.2f}<extra></extra>"))
+    production_value_fig.update_layout(title=None, xaxis_title=None, yaxis_title="Production Value (₹)", showlegend=False, margin=dict(l=65, r=20, t=20, b=55))
+    apply_dark(production_value_fig)
+
+    distribution_rows = db.session.query(Product.product_name, func.coalesce(func.sum(Production.quantity), 0).label("quantity")).join(Production, Production.product_id == Product.product_id).filter(Production.user_id == user_id).group_by(Product.product_name).order_by(func.sum(Production.quantity).desc()).limit(8).all()
+
+    distribution_labels = [row.product_name or "Unknown Product" for row in distribution_rows]
+    distribution_quantities = [float(row.quantity or 0) for row in distribution_rows]
+
+    production_distribution_fig = go.Figure()
+    production_distribution_fig.add_trace(go.Pie(labels=distribution_labels, values=distribution_quantities, hole=0.62, textinfo="percent", marker=dict(colors=["#38BDF8", "#0EA5E9", "#2563EB", "#6366F1", "#1D4ED8", "#0284C7", "#60A5FA", "#1E40AF"]), hovertemplate="%{label}<br>Units: %{value:,.0f}<br>Share: %{percent}<extra></extra>"))
+    production_distribution_fig.update_layout(title=None, showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5), margin=dict(l=20, r=20, t=15, b=65))
+    apply_dark(production_distribution_fig)
+
+    if search:
+        search_pattern = f"%{search}%"
+        base_query = base_query.filter(or_(Product.product_name.ilike(search_pattern), cast(Production.quantity, String).ilike(search_pattern), cast(Production.price, String).ilike(search_pattern), cast(Production.time_period, String).ilike(search_pattern)))
+
+    filtered_records = base_query.count()
+    total_pages = max(1, (filtered_records + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+
+    production_records = base_query.order_by(Production.time_period.desc().nullslast()).offset((page - 1) * per_page).limit(per_page).all()
+
+    start_record = (page - 1) * per_page + 1 if filtered_records > 0 else 0
+    end_record = min(page * per_page, filtered_records)
+
+    monthly_production_chart = json.dumps(monthly_production_fig, cls=PlotlyJSONEncoder)
+    product_production_chart = json.dumps(product_production_fig, cls=PlotlyJSONEncoder)
+    production_value_chart = json.dumps(production_value_fig, cls=PlotlyJSONEncoder)
+    production_distribution_chart = json.dumps(production_distribution_fig, cls=PlotlyJSONEncoder)
+
+    return render_template("production.html", total_production_value=float(total_production_value), total_records=total_records, total_quantity=total_quantity, unique_products=unique_products, monthly_production_chart=monthly_production_chart, product_production_chart=product_production_chart, production_value_chart=production_value_chart, production_distribution_chart=production_distribution_chart, production_records=production_records, search=search, page=page, total_pages=total_pages, start_record=start_record, end_record=end_record, filtered_records=filtered_records)
+
+
+@home.route("/expenses")
+def expenses():
+    if "user_id" not in session:
+        return redirect(url_for("home.login"))
+
+    user_id = session["user_id"]
+    search = request.args.get("q", "").strip()
+    page = request.args.get("page", 1, type=int)
+    per_page = 15
+
+    total_expenses = db.session.query(func.coalesce(func.sum(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0
+    total_records = Expenses.query.filter_by(user_id=user_id).count()
+    average_expense = db.session.query(func.coalesce(func.avg(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0
+    unique_categories = db.session.query(func.count(func.distinct(Expenses.exp_category))).filter(Expenses.user_id == user_id).scalar() or 0
+
+    monthly_data = db.session.query(func.date_trunc("month", Expenses.time_period).label("month"), func.sum(Expenses.price).label("amount")).filter(Expenses.user_id == user_id, Expenses.time_period.isnot(None)).group_by(func.date_trunc("month", Expenses.time_period)).order_by(func.date_trunc("month", Expenses.time_period)).all()
+
+    category_data = db.session.query(func.coalesce(Expenses.exp_category, "Uncategorized").label("category"), func.sum(Expenses.price).label("amount")).filter(Expenses.user_id == user_id).group_by(func.coalesce(Expenses.exp_category, "Uncategorized")).order_by(func.sum(Expenses.price).desc()).all()
+
+    month_labels = [row.month.strftime("%b %Y") for row in monthly_data]
+    month_amounts = [float(row.amount or 0) for row in monthly_data]
+    category_labels = [row.category for row in category_data]
+    category_amounts = [float(row.amount or 0) for row in category_data]
+
+    monthly_fig = go.Figure(go.Bar(x=month_labels, y=month_amounts, marker_color="#38bdf8", name="Expenses"))
+    monthly_fig.update_layout(title="Monthly Expenses", xaxis_title="Month", yaxis_title="Amount (₹)")
+    apply_dark(monthly_fig)
+
+    category_fig = go.Figure(go.Pie(labels=category_labels, values=category_amounts, hole=0.55))
+    category_fig.update_layout(title="Expenses by Category")
+    apply_dark(category_fig)
+
+    trend_fig = go.Figure(go.Scatter(x=month_labels, y=month_amounts, mode="lines+markers", line=dict(color="#a78bfa", width=3), marker=dict(size=8), name="Expense Trend"))
+    trend_fig.update_layout(title="Expense Trend", xaxis_title="Month", yaxis_title="Amount (₹)")
+    apply_dark(trend_fig)
+
+    top_data = category_data[:10]
+    top_fig = go.Figure(go.Bar(x=[float(row.amount or 0) for row in top_data], y=[row.category for row in top_data], orientation="h", marker_color="#0ea5e9"))
+    top_fig.update_layout(title="Top Expense Categories", xaxis_title="Amount (₹)", yaxis_title="Category", yaxis=dict(autorange="reversed"))
+    apply_dark(top_fig)
+
+    query = Expenses.query.filter_by(user_id=user_id)
+
+    if search:
+        query = query.filter(or_(Expenses.exp_category.ilike(f"%{search}%"), cast(Expenses.price, String).ilike(f"%{search}%"), cast(Expenses.time_period, String).ilike(f"%{search}%")))
+
+    filtered_records = query.count()
+    total_pages = max(1, (filtered_records + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    expenses = query.order_by(Expenses.time_period.desc()).paginate(page=page, per_page=per_page, error_out=False).items
+
+    return render_template("expenses.html", total_expenses=total_expenses, total_records=total_records, average_expense=average_expense, unique_categories=unique_categories, monthly_expenses_chart=json.dumps(monthly_fig, cls=PlotlyJSONEncoder), category_expenses_chart=json.dumps(category_fig, cls=PlotlyJSONEncoder), expense_trend_chart=json.dumps(trend_fig, cls=PlotlyJSONEncoder), top_categories_chart=json.dumps(top_fig, cls=PlotlyJSONEncoder), expenses=expenses, search=search, page=page, per_page=per_page, total_pages=total_pages, filtered_records=filtered_records)
