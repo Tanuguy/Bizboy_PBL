@@ -10,7 +10,7 @@ import random
 import plotly.graph_objects as go
 from plotly.utils import PlotlyJSONEncoder
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
-from sqlalchemy import func,cast,String,or_
+from sqlalchemy import func,cast,String,or_,text
 from app import db#,cache
 from app.models import User, Product, Sales, Production, Expenses, CustomerData, Prediction, Analysis
 from datetime import datetime
@@ -459,9 +459,28 @@ def dashboard():
     analysis = Analysis.query.filter_by(user_id=user_id).order_by(Analysis.ana_id.desc()).all()
     products = Product.query.filter_by(user_id=user_id).order_by(Product.product_name.asc()).limit(10).all()
 
-    monthly_sales_rows = db.session.query(func.date_trunc("month", Sales.time_period).label("month"), func.sum(Sales.amount_of_sales).label("total")).filter(Sales.user_id == user_id, Sales.time_period.isnot(None)).group_by(func.date_trunc("month", Sales.time_period)).order_by(func.date_trunc("month", Sales.time_period)).all()
-    monthly_expense_rows = db.session.query(func.date_trunc("month", Expenses.time_period).label("month"), func.sum(Expenses.price).label("total")).filter(Expenses.user_id == user_id, Expenses.time_period.isnot(None)).group_by(func.date_trunc("month", Expenses.time_period)).order_by(func.date_trunc("month", Expenses.time_period)).all()
-
+    monthly_sales_rows = db.session.execute(text("""
+        SELECT
+            DATE_TRUNC('month', time_period::timestamp) AS month,
+            SUM(amount_of_sales) AS total
+        FROM sales
+        WHERE user_id = :user_id
+          AND time_period IS NOT NULL
+        GROUP BY 1
+        ORDER BY 1
+    """),{"user_id": user_id}).fetchall()
+    
+    monthly_expense_rows = db.session.execute(
+        text("""
+            SELECT
+                DATE_TRUNC('month', time_period::timestamp) AS month,
+                SUM(price) AS total
+            FROM expenses
+            WHERE user_id = :user_id
+              AND time_period IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+        """),{"user_id": user_id}).fetchall()
     monthly_sales = {month.strftime("%Y-%m"): float(total or 0) for month, total in monthly_sales_rows}
     monthly_expenses = {month.strftime("%Y-%m"): float(total or 0) for month, total in monthly_expense_rows}
     months = sorted(set(monthly_sales) | set(monthly_expenses))
