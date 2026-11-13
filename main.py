@@ -2,9 +2,9 @@ from app import main_create
 from app import db#,cache
 from app.models import User
 app=main_create()
-with app.app_context():
-    db.create_all()
-    print("Done")
+#with app.app_context():
+ #   db.create_all()
+  #  print("Done")
 
 if __name__=='__main__':
     app.run(debug=True)
