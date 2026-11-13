@@ -642,8 +642,18 @@ def sales_page():
     total_quantity = int(db.session.query(func.coalesce(func.sum(Sales.quantity), 0)).filter(Sales.user_id == user_id).scalar() or 0)
     unique_products = db.session.query(func.count(func.distinct(Sales.product_id))).filter(Sales.user_id == user_id, Sales.product_id.isnot(None)).scalar() or 0
 
-    monthly_rows = db.session.query(func.date_trunc("month", Sales.time_period).label("month"), func.sum(Sales.amount_of_sales).label("total_sales"), func.sum(Sales.quantity).label("total_quantity")).filter(Sales.user_id == user_id, Sales.time_period.isnot(None)).group_by(func.date_trunc("month", Sales.time_period)).order_by(func.date_trunc("month", Sales.time_period)).all()
-
+    monthly_rows = db.session.execute(
+        text("""
+            SELECT
+                DATE_TRUNC('month', time_period::timestamp) AS month,
+                SUM(amount_of_sales) AS total_sales,
+                SUM(quantity) AS total_quantity
+            FROM sales
+            WHERE user_id = :user_id
+              AND time_period IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+        """),{"user_id": user_id}).fetchall()
     monthly_sales = {month.strftime("%Y-%m"): float(amount or 0) for month, amount, quantity in monthly_rows}
     monthly_quantity = {month.strftime("%Y-%m"): int(quantity or 0) for month, amount, quantity in monthly_rows}
     months = sorted(monthly_sales.keys())
@@ -836,8 +846,16 @@ def production():
     total_production_value = db.session.query(func.coalesce(func.sum(Production.quantity * Production.price), 0)).filter(Production.user_id == user_id).scalar() or 0
     unique_products = db.session.query(func.count(func.distinct(Production.product_id))).filter(Production.user_id == user_id).scalar() or 0
 
-    monthly_rows = db.session.query(func.date_trunc("month", Production.time_period).label("month"), func.coalesce(func.sum(Production.quantity), 0).label("quantity")).filter(Production.user_id == user_id, Production.time_period.isnot(None)).group_by(func.date_trunc("month", Production.time_period)).order_by(func.date_trunc("month", Production.time_period)).all()
-
+    monthly_rows = db.session.execute(text("""
+            SELECT
+                DATE_TRUNC('month', time_period::timestamp) AS month,
+                COALESCE(SUM(quantity), 0) AS quantity
+            FROM production
+            WHERE user_id = :user_id
+              AND time_period IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+        """),{"user_id": user_id}).fetchall()
     monthly_labels = [row.month.strftime("%b %Y") for row in monthly_rows]
     monthly_quantities = [float(row.quantity or 0) for row in monthly_rows]
 
@@ -856,8 +874,17 @@ def production():
     product_production_fig.update_layout(title=None, xaxis_title="Units Produced", yaxis_title=None, showlegend=False, yaxis=dict(autorange="reversed"), margin=dict(l=110, r=25, t=20, b=45))
     apply_dark(product_production_fig)
 
-    value_rows = db.session.query(func.date_trunc("month", Production.time_period).label("month"), func.coalesce(func.sum(Production.quantity * Production.price), 0).label("value")).filter(Production.user_id == user_id, Production.time_period.isnot(None)).group_by(func.date_trunc("month", Production.time_period)).order_by(func.date_trunc("month", Production.time_period)).all()
-
+    value_rows = db.session.execute(
+        text("""
+            SELECT
+                DATE_TRUNC('month', time_period::timestamp) AS month,
+                COALESCE(SUM(quantity * price), 0) AS value
+            FROM production
+            WHERE user_id = :user_id
+              AND time_period IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+        """),{"user_id": user_id}).fetchall()
     value_labels = [row.month.strftime("%b %Y") for row in value_rows]
     production_values = [float(row.value or 0) for row in value_rows]
 
@@ -912,8 +939,19 @@ def expenses():
     average_expense = db.session.query(func.coalesce(func.avg(Expenses.price), 0)).filter(Expenses.user_id == user_id).scalar() or 0
     unique_categories = db.session.query(func.count(func.distinct(Expenses.exp_category))).filter(Expenses.user_id == user_id).scalar() or 0
 
-    monthly_data = db.session.query(func.date_trunc("month", Expenses.time_period).label("month"), func.sum(Expenses.price).label("amount")).filter(Expenses.user_id == user_id, Expenses.time_period.isnot(None)).group_by(func.date_trunc("month", Expenses.time_period)).order_by(func.date_trunc("month", Expenses.time_period)).all()
-
+    monthly_data = db.session.execute(
+        text("""
+            SELECT
+                DATE_TRUNC('month', time_period::timestamp) AS month,
+                SUM(price) AS amount
+            FROM expenses
+            WHERE user_id = :user_id
+            AND time_period IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+        """),
+        {"user_id": user_id}
+    ).fetchall()
     category_data = db.session.query(func.coalesce(Expenses.exp_category, "Uncategorized").label("category"), func.sum(Expenses.price).label("amount")).filter(Expenses.user_id == user_id).group_by(func.coalesce(Expenses.exp_category, "Uncategorized")).order_by(func.sum(Expenses.price).desc()).all()
 
     month_labels = [row.month.strftime("%b %Y") for row in monthly_data]
