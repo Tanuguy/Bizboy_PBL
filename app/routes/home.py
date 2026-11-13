@@ -951,9 +951,19 @@ def expenses():
             ORDER BY 1
         """),
         {"user_id": user_id}
+    ).fetchall() 
+    category_data = db.session.execute(
+        text("""
+            SELECT
+                COALESCE(exp_category, 'Uncategorized') AS category,
+                SUM(price) AS amount
+            FROM expenses
+            WHERE user_id = :user_id
+            GROUP BY COALESCE(exp_category, 'Uncategorized')
+            ORDER BY SUM(price) DESC
+        """),
+        {"user_id": user_id}
     ).fetchall()
-    category_data = db.session.query(func.coalesce(Expenses.exp_category, "Uncategorized").label("category"), func.sum(Expenses.price).label("amount")).filter(Expenses.user_id == user_id).group_by(func.coalesce(Expenses.exp_category, "Uncategorized")).order_by(func.sum(Expenses.price).desc()).all()
-
     month_labels = [row.month.strftime("%b %Y") for row in monthly_data]
     month_amounts = [float(row.amount or 0) for row in monthly_data]
     category_labels = [row.category for row in category_data]
