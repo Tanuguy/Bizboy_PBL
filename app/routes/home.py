@@ -881,7 +881,7 @@ def production():
 @home.route("/expenses")
 def expenses():
     if "user_id" not in session:
-        return redirect(url_for("home.login"))
+        return redirect(url_for("auth.login"))
 
     user_id = session["user_id"]
     search = request.args.get("q", "").strip()
